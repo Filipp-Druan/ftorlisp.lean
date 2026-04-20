@@ -1,4 +1,4 @@
-namespace ParserCombinators
+namespace Ftorlisp.ParserCombinators
 
 abbrev ParserPos := Nat
 
