@@ -8,31 +8,40 @@ structure ParserState where
   pos : ParserPos
 deriving Repr, BEq
 
-structure ParserError (ε : Type) where
-  err : ε
-  pos : ParserPos
+structure ParserRes (α : Type) where
+  val : α
+  state : ParserState
+deriving Repr, BEq
 
-inductive StandardParserError where
+inductive ErrorVal (ε : Type) where
   | mismatch
   | endOfInput
   | conversionFail
   | inputNotReduce
+  | custom (val : ε)
+deriving Repr, BEq
 
-def Parser (ε α : Type) := ParserState → Except (ParserError ε) (α × ParserState)
+structure ParserError (ε : Type) where
+  err : ErrorVal ε
+  pos : ParserPos
+  sub : Option (ParserError ε)
+deriving Repr, BEq
+
+def Parser (ε α : Type) := ParserState → Except (ParserError ε) (ParserRes α)
 
 def ppure (val : α): Parser ε α :=
-  λ state => .ok (val, state)
+  λ state => .ok ⟨val, state⟩
 
 def pbind (pars : Parser ε α) (fn : α -> Parser ε β): Parser ε β :=
   λ state => match pars state with
     | .error err => .error err
-    | .ok (val, state) => (fn val) state
+    | .ok ⟨val, state⟩ => (fn val) state
 
-def pfail (err : ε) : Parser ε α :=
-  λ state => .error { err := err, pos := state.pos }
+def pfail (err : ErrorVal ε) : Parser ε α :=
+  λ state => .error { err := err, pos := state.pos, sub := .none }
 
 -- Превращает Option в Parser. Если .none, падает с указанной ошибкой.
-def fromOption (opt : Option α) (err : ε) : Parser ε α :=
+def fromOption (opt : Option α) (err : ErrorVal ε) : Parser ε α :=
   match opt with
   | .some val => ppure val
   | .none     => pfail err
@@ -42,72 +51,92 @@ instance : Monad (Parser ε) where
   bind := pbind
 
 
-def sat (pred : Char → Bool) : Parser StandardParserError Char :=
+def sat (pred : Char → Bool) : Parser ε Char :=
   λ state =>
     let str := state.input
     if (str.isEmpty) then
       let pos := state.pos
-      .error { err := .endOfInput, pos := pos}
+      .error { err := .endOfInput, pos := pos, sub := .none}
     else
       if pred (str.front) then
         let new_input := (str.drop 1).toString
         let new_pos := state.pos + 1
-        .ok (str.front, { input := new_input, pos := new_pos })
+        .ok ⟨str.front, { input := new_input, pos := new_pos }⟩
       else
-        .error { err := .mismatch, pos := state.pos}
+        .error { err := .mismatch, pos := state.pos, sub := .none}
 
 partial def manyCore (parser : Parser ε α) (acc : Array α): Parser ε (Array α) :=
   λ state =>
     match parser state with
-      | .error _ => .ok (acc, state)
-      | .ok (val, new_state) => manyCore parser (acc.push val) new_state
+      | .error _ => .ok ⟨acc, state⟩
+      | .ok ⟨val, new_state⟩ => manyCore parser (acc.push val) new_state
       -- Если парсер не уменьшает длину строки, manyCore уйдёт в бесконечный цикл.
 
 partial def many (parser : Parser ε α): Parser ε (Array α) :=
   λ state => (manyCore parser #[]) state
+
+partial def many1 (parser : Parser ε α): Parser ε (Array α) :=
+  λ state => match (parser state) with
+    | .error err => .error { err := .mismatch, pos := state.pos, sub := err}
+    | .ok _ => many parser state
 
 instance : OrElse (Parser ε α) where
   orElse parser_1 parser_2 :=  λ state =>
     let res := parser_1 state
     match res with
       | .ok val => .ok val
-      | .error _ => parser_2 () state
+      | .error err =>
+        let res2 := parser_2 () state
+        match res2 with
+          | .ok _ => res2
+          | .error err2 =>
+            if err.pos > err2.pos then
+              .error err
+            else
+              .error err2
 
 instance : Functor (Parser ε) where
   map f parser := λ state =>
     let res := parser state
     match res with
-      | .ok (val, new_state) => .ok (f val, new_state)
+      | .ok ⟨val, new_state⟩ => .ok ⟨f val, new_state⟩
       | .error err => .error err
 
 def maybe (parser : Parser ε α) : Parser ε (Option α) :=
   λ state =>
     let res := parser state
     match res with
-      | .ok (val, new_state) => .ok (.some val, new_state)
-      | .error _ => .ok (.none, state)
+      | .ok ⟨val, new_state⟩ => .ok ⟨.some val, new_state⟩
+      | .error _ => .ok ⟨.none, state⟩
 
-def withSep (parser separator : Parser ε α) : Parser ε α := do
+def withSep (parser : Parser ε α) (separator : Parser ε β) : Parser ε α := do
   let res ← parser
-  let _ := maybe separator
+  let _ ← maybe separator
   return res
 
-def sepBy (parser separator: Parser ε α) : Parser ε (Array α) := do
+def withErr (err : ErrorVal ε) (parser : Parser ε α) : Parser ε α :=
+  λ state =>
+    let res := parser state
+    match res with
+      | .ok _ => res
+      | .error sub_err => .error ⟨err, sub_err.pos, sub_err⟩
+
+def sepBy (parser : Parser ε α) (separator : Parser ε β) : Parser ε (Array α) := do
   many (withSep parser separator)
 
 
-def char (ch : Char) : Parser StandardParserError Char :=
+def char (ch : Char) : Parser ε Char :=
   sat (· = ch)
 
-def string (pattern : String) : Parser StandardParserError String :=
+def string (pattern : String) : Parser ε String :=
   λ state =>
     if (state.input.startsWith pattern) then
       let rest := (state.input.drop (pattern.length)).toString
-      .ok (pattern, ⟨rest, state.pos + pattern.length⟩)
+      .ok ⟨pattern, ⟨rest, state.pos + pattern.length⟩⟩
     else
-      .error ⟨.mismatch, state.pos ⟩
+      .error ⟨.mismatch, state.pos, .none⟩
 
-def ws : Parser StandardParserError Char :=
+def ws : Parser ε Char :=
   sat (·.isWhitespace)
 
 
@@ -118,21 +147,24 @@ def digitToNat (ch : Char): Option Nat :=
   else
     .none
 
-def digit : Parser StandardParserError Nat := do
+def digit : Parser ε Nat := do
   let ch ← sat Char.isDigit
   fromOption (digitToNat ch) .conversionFail
 
-#guard match (digit ⟨"1", 0⟩) with
-  | .ok (num, _) => num = 1
-  | .error _ => false
 
 -- Этот комбинатор парсит набор цифр, которые идут подряд друг за другом,
 -- без разделения при помощи знака _
-def wholeNumber : Parser StandardParserError Nat := do
-  let digits ← many digit
+def wholeNumber : Parser ε Nat := do
+  let digits ← many1 digit
   let num := digits.foldl (fun acc num => acc * 10 + num) 0
   return num
 
-#guard match (wholeNumber ⟨"123", 0⟩) with
-  | .ok (num, _) => num = 123
-  | .error _ => false
+#guard let parser : Parser Unit Nat := digit
+  match (parser ⟨"1", 0⟩) with
+    | .ok ⟨num, _⟩ => num = 1
+    | .error _ => false
+
+#guard let parser : Parser Unit Nat := digit
+  match (parser ⟨"1", 0⟩) with
+    | .ok ⟨num, _⟩ => num = 1
+    | .error _ => false

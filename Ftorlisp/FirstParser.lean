@@ -8,7 +8,13 @@ open Ftorlisp.ParseTree
 
 namespace Ftorlisp.FirstParser
 
-def intParser : Parser StandardParserError ParseTree := do
+inductive FirstParserError where
+  | int
+  | sym
+  | list
+deriving Repr
+
+def intParser : Parser FirstParserError ParseTree := do
   let minus ← maybe (char '-')
   let num ← wholeNumber
   match minus with
@@ -21,15 +27,21 @@ def isMathChar (ch : Char) : Bool :=
 def isSymbolChar (ch : Char) : Bool :=
   ch.isAlphanum || isMathChar ch
 
-def symParser : Parser StandardParserError ParseTree := do
-  let chars ← many (sat isSymbolChar)
+def symParser : Parser FirstParserError ParseTree := do
+  let chars ← many1 (sat isSymbolChar)
   return .sym (String.ofList chars.toList)
 
 mutual
-  partial def listParser : Parser StandardParserError ParseTree := do
-    let exprs ← many exprParser
+  partial def listParser : Parser FirstParserError ParseTree := do
+    let _ ←  char '('
+    let exprs ← sepBy exprParser ws
+    let _ ← char ')'
     return .call exprs.toList
 
-  partial def exprParser : Parser StandardParserError ParseTree := do
-    intParser <|> symParser <|> listParser
+  partial def exprParser : Parser FirstParserError ParseTree := do
+    (withErr (.custom FirstParserError.int)  intParser) <|>
+    (withErr (.custom FirstParserError.sym)  symParser) <|>
+    (withErr (.custom FirstParserError.list) listParser)
 end
+
+#eval (exprParser (ParserState.mk "(+ ()+)" 0))
