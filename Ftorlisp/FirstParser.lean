@@ -44,4 +44,4 @@ mutual
     (withErr (.custom FirstParserError.list) listParser)
 end
 
-#eval (exprParser (ParserState.mk "(+ ()+)" 0))
+#eval (exprParser (ParserState.mk "(+ 1 2 (* 3 4))" 0))
