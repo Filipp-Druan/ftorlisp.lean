@@ -34,11 +34,20 @@ mutual
               | "+" => do
                 let arg_ASTs ← List.mapM ast_parser arguments
 
-                return .plus arg_ASTs
+                return .add arg_ASTs
               | "*" => do
                 let arg_ASTs ← List.mapM ast_parser arguments
 
                 return .mul arg_ASTs
+              | "-" => do
+                let arg_ASTs ← List.mapM ast_parser arguments
+
+                return .sub arg_ASTs
+              | "/" => do
+                let arg_ASTs ← List.mapM ast_parser arguments
+
+                return .div arg_ASTs
+
               | _ => .error (.unknownOperator operator)
           | _ => .error (.operatorNotSymbol operator)
       | _ => .error .notCallUnreachable
