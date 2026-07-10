@@ -16,69 +16,78 @@ inductive SecondParserError where
   | unknownOperator (parse_tree : ParseTree)
   | operatorNotSymbol (parse_tree : ParseTree)
   | notCallUnreachable
+  | notArgsUnreachable
+  | notStmtServis --
+  | notExpServis -- Служебные ошибки, используются для управления парсингом
+  | notExp (parse_tree : ParseTree)
+  | notExpAndNotStmt
+  | emptyCall
   | letNot2Args (args : List ParseTree)
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
 deriving Nonempty, Repr, BEq
 
+abbrev SPExcept := Except SecondParserError
+
 mutual
-  partial def ast_parser (parse_tree : ParseTree) : Except SecondParserError UnTyAST :=
+  partial def math_args_parser (args : List ParseTree) : SPExcept (List UnTyASTExpr) := do
+    let args_ast ← List.mapM exp_parser args
+    return args_ast
+
+  partial def math_parser (oper : List UnTyASTExpr → UnTyASTExpr) (args : List ParseTree) : SPExcept UnTyASTExpr :=
+    let args_res := math_args_parser args
+      match args_res with
+        | .ok list => .ok $ oper list
+        | .error err => .error err
+
+partial def exp_parser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
-      | .int val => .ok (.intLit val)
-      | .sym name => .ok (.sym name)
-      | .call _ => (call_parser parse_tree)
+      | .int val => .ok $ .intLit val
+      | .sym name => .ok $ .sym name
+      | .call (oper :: args) =>
+        match oper with
+          | .sym "+" => math_parser .add args
+          | .sym "*" => math_parser .mul args
+          | .sym "-" => math_parser .sub args
+          | .sym "/" => math_parser .div args
+          | _ => .error .notExpServis
+      | .call _ => .error .emptyCall
 
-  partial def call_parser (parse_tree : ParseTree) : Except SecondParserError UnTyAST :=
+partial def let_stmt_parser (args : List ParseTree) : SPExcept UnTyASTStmt :=
+  match args with
+    | [name, val] => do
+      let name_ast ← exp_parser name
+      let val_ast ← exp_parser val
+
+      match name_ast with
+        | .sym _ => .ok $ .let_stmt name_ast val_ast
+        | _ => .error .letNameNotSym
+
+    | _ => .error $ .letNot2Args args
+
+  partial def stmt_parser (parse_tree : ParseTree) : SPExcept UnTyASTStmt :=
     match parse_tree with
-      | .call (operator :: arguments) =>
-        match operator with
-          | .sym name =>
-            match name with
-              | "+" => do
-                let arg_ASTs ← List.mapM ast_parser arguments
+      | .call (oper :: args) =>
+        match oper with
+          | .sym "let" => let_stmt_parser args
+          | .sym _ => .error $ .unknownOperator oper
+          | _ => .error $ .operatorNotSymbol oper
+      | _ => .error .notStmtServis
 
-                return .exp $ .add arg_ASTs
-              | "*" => do
-                let arg_ASTs ← List.mapM ast_parser arguments
+  partial def ast_parser (parse_tree : ParseTree) : SPExcept UnTyAST :=
+    let exp_res := exp_parser parse_tree
+    match exp_res with
+      | .ok exp_ast => .ok $ .exp exp_ast
+      | .error .notExpServis =>
+        let stmt_res := stmt_parser parse_tree
+        match stmt_res with
+          | .ok stmt_ast => .ok $ .stmt stmt_ast
+          | .error .notStmtServis => .error .notExpAndNotStmt
+          | .error err => .error err
+      | .error err => .error err
 
-                return .exp $ .mul arg_ASTs
-              | "-" => do
-                let arg_ASTs ← List.mapM ast_parser arguments
 
-                return .exp $ .sub arg_ASTs
-              | "/" => do
-                let arg_ASTs ← List.mapM ast_parser arguments
 
-                return .exp $ .div arg_ASTs
-
-              | "let" => let_args_parser arguments
-
-              | _ => .error (.unknownOperator operator)
-          | _ => .error (.operatorNotSymbol operator)
-      | _ => .error .notCallUnreachable
-
-  partial def let_name_parser (name : ParseTree) : Except SecondParserError UnTyAST := do
-    let name_ast ← ast_parser name
-
-    match name_ast with
-      | .sym _ => return name_ast
-      | _ => .error .letNameNotSym
-
-  partial def let_val_parser (val : ParseTree) : Except SecondParserError UnTyAST := do
-    let val_ast ← ast_parser val
-
-    match val_ast with
-      | .exp _ => return val_ast
-      | _ => .error $ .letValNotExp val_ast
-
-  partial def let_args_parser (args : List ParseTree) : Except SecondParserError UnTyAST :=
-    match args with
-      | [name, val] => do
-        let name_ast ← let_name_parser name
-        let val_ast ← let_val_parser val
-
-        return .let_statement name_ast val_ast
-      | _ => .error $ .letNot2Args args
 end
 
 #eval do
