@@ -79,7 +79,8 @@ mutual
 
         return .let_statement name_ast val_ast
       | _ => .error $ .letNot2Args args
-
-
-
 end
+
+#eval do
+  let pt ← (exprParser ⟨"(+ 1 2)", 0⟩)
+  return ast_parser pt.val
