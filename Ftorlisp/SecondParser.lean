@@ -60,7 +60,7 @@ partial def let_stmt_parser (args : List ParseTree) : SPExcept UnTyASTStmt :=
       let val_ast ← exp_parser val
 
       match name_ast with
-        | .sym _ => .ok $ .let_stmt name_ast val_ast
+        | .sym name_str => .ok $ .let_stmt name_str val_ast
         | _ => .error .letNameNotSym
 
     | _ => .error $ .letNot2Args args
@@ -91,5 +91,5 @@ partial def let_stmt_parser (args : List ParseTree) : SPExcept UnTyASTStmt :=
 end
 
 #eval do
-  let pt ← (exprParser ⟨"(+ 1 2)", 0⟩)
+  let pt ← (exprParser ⟨"(let num (+ 1 2))", 0⟩)
   return ast_parser pt.val

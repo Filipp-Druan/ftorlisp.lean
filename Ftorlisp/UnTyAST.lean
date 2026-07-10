@@ -11,7 +11,7 @@ mutual
   deriving Nonempty, Repr, BEq
 
   inductive UnTyASTStmt where
-    | let_stmt (name : UnTyASTExpr) (val : UnTyASTExpr) -- name - всегда .sym
+    | let_stmt (name : String) (val : UnTyASTExpr) -- name - всегда .sym
 
   inductive UnTyAST where
     | exp (val : UnTyASTExpr)
