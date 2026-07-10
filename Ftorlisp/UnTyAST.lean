@@ -16,7 +16,14 @@ mutual
   deriving Nonempty, Repr, BEq
 end
 
+namespace UnTyAST
+
 def toInt (ast : UnTyAST) : Option Int :=
     match ast with
       | .intLit val => .some val
       | _ => .none
+
+#guard (UnTyAST.intLit 10).toInt == .some 10
+
+end UnTyAST
+end Ftorlisp.UnTyAST
