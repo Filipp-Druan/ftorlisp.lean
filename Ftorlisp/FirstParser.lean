@@ -44,4 +44,8 @@ mutual
     (withErr (.custom FirstParserError.list) listParser)
 end
 
+partial def programParser : Parser FirstParserError (List ParseTree) := do
+  let arr ← many exprParser
+  return arr.toList
+
 #eval (exprParser (ParserState.mk "(+ 1 2 (* 3 4))" 0))
