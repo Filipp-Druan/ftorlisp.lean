@@ -1,13 +1,15 @@
+import Ftorlisp.OpTypes
+
+open Ftorlisp.OpTypes
+
 namespace Ftorlisp.UnTyAST
 
 mutual
   inductive UnTyASTExpr where
     | intLit (val : Int)
     | sym (name : String)
-    | add (list : List UnTyASTExpr)
-    | mul (list : List UnTyASTExpr)
-    | sub (list : List UnTyASTExpr)
-    | div (list : List UnTyASTExpr)
+    | binOp (op : BinOp) (arg1 arg2 : UnTyASTExpr)
+    | unOp (op : UnOp) (arg : UnTyASTExpr)
   deriving Nonempty, Repr, BEq
 
   inductive UnTyASTStmt where
