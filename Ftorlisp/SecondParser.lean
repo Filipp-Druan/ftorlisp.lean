@@ -1,10 +1,12 @@
 import Ftorlisp.FirstParser
 import Ftorlisp.ParseTree
 import Ftorlisp.UnTyAST
+import Ftorlisp.OpTypes
 
 open Ftorlisp.UnTyAST
 open Ftorlisp.FirstParser
 open Ftorlisp.ParseTree
+open Ftorlisp.OpTypes
 
 /-
 Данный файл содержит код второго парсера,
@@ -22,6 +24,7 @@ inductive SecondParserError where
   | notExp (parse_tree : ParseTree)
   | notExpAndNotStmt
   | emptyCall
+  | arithNot2Args
   | letNot2Args (args : List ParseTree)
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
@@ -30,66 +33,82 @@ deriving Nonempty, Repr, BEq
 abbrev SPExcept := Except SecondParserError
 
 mutual
-  partial def math_args_parser (args : List ParseTree) : SPExcept (List UnTyASTExpr) := do
-    let args_ast ← List.mapM exp_parser args
-    return args_ast
-
-  partial def math_parser (oper : List UnTyASTExpr → UnTyASTExpr) (args : List ParseTree) : SPExcept UnTyASTExpr :=
-    let args_res := math_args_parser args
-      match args_res with
-        | .ok list => .ok $ oper list
-        | .error err => .error err
-
-partial def exp_parser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
+  partial def expParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
       | .int val => .ok $ .intLit val
       | .sym name => .ok $ .sym name
       | .call (oper :: args) =>
         match oper with
-          | .sym "+" => math_parser .add args
-          | .sym "*" => math_parser .mul args
-          | .sym "-" => math_parser .sub args
-          | .sym "/" => math_parser .div args
+          | .sym "+" => binOpParser .add args
+          | .sym "*" => binOpParser .mul args
+          | .sym "-" => minusParser args
+          | .sym "/" => binOpParser .div args
           | _ => .error .notExpServis
-      | .call _ => .error .emptyCall
+      | .call [] => .error .emptyCall
 
-partial def let_stmt_parser (args : List ParseTree) : SPExcept UnTyASTStmt :=
-  match args with
-    | [name, val] => do
-      let name_ast ← exp_parser name
-      let val_ast ← exp_parser val
+  partial def binOpParser (oper : BinOp) (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | [] => Except.error SecondParserError.emptyCall
+      | [_] => .error .arithNot2Args
+      | [arg1, arg2] => do
+        let arg1_ast ← expParser arg1
+        let arg2_ast ← expParser arg2
+        return (UnTyASTExpr.binOp  oper arg1_ast arg2_ast)
+      | arg1 :: rest => do
+        let arg1_ast ← expParser arg1
+        let rest_ast ← (binOpParser oper rest)
+        return .binOp oper arg1_ast rest_ast
 
-      match name_ast with
-        | .sym name_str => .ok $ .let_stmt name_str val_ast
-        | _ => .error .letNameNotSym
+  partial def minusParser (args : List ParseTree) : SPExcept UnTyASTExpr :=
+    match args with
+      | [] => .error .emptyCall
+      | [arg] => do
+        let arg_ast ← expParser arg
+        return .unOp .neg arg_ast
+      | [arg1, arg2] => do
+        let arg1_ast ← expParser arg1
+        let arg2_ast ← expParser arg2
+        return .binOp .sub arg1_ast arg2_ast
+      | arg1 :: rest => do
+          let arg1_ast ← expParser arg1
+          let rest_ast ← (binOpParser .sub rest)
+          return .binOp .sub arg1_ast rest_ast
 
-    | _ => .error $ .letNot2Args args
+  partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
+    match args with
+      | [name, val] => do
+        let name_ast ← expParser name
+        let val_ast ← expParser val
 
-  partial def stmt_parser (parse_tree : ParseTree) : SPExcept UnTyASTStmt :=
+        match name_ast with
+          | .sym name_str => .ok $ .let_stmt name_str val_ast
+          | _ => .error .letNameNotSym
+
+      | _ => .error $ .letNot2Args args
+
+  partial def stmtParser (parse_tree : ParseTree) : SPExcept UnTyASTStmt :=
     match parse_tree with
       | .call (oper :: args) =>
         match oper with
-          | .sym "let" => let_stmt_parser args
+          | .sym "let" => letStmtParser args
           | .sym _ => .error $ .unknownOperator oper
           | _ => .error $ .operatorNotSymbol oper
       | _ => .error .notStmtServis
 
-  partial def ast_parser (parse_tree : ParseTree) : SPExcept UnTyAST :=
-    let exp_res := exp_parser parse_tree
+  partial def astParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
+    let exp_res := expParser parse_tree
     match exp_res with
-      | .ok exp_ast => .ok $ .exp exp_ast
+      | Except.ok exp_ast => .ok $ .exp exp_ast
       | .error .notExpServis =>
-        let stmt_res := stmt_parser parse_tree
+        let stmt_res := stmtParser parse_tree
         match stmt_res with
           | .ok stmt_ast => .ok $ .stmt stmt_ast
           | .error .notStmtServis => .error .notExpAndNotStmt
           | .error err => .error err
       | .error err => .error err
 
-
-
 end
 
 #eval do
-  let pt ← (exprParser ⟨"(let num (+ 1 2))", 0⟩)
-  return ast_parser pt.val
+  let pt ← (exprParser ⟨"(let num (+ 1 2 3))", 0⟩)
+  return astParser pt.val
