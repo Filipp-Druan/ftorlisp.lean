@@ -23,6 +23,7 @@ inductive SecondParserError where
   | notExpServis -- Служебные ошибки, используются для управления парсингом
   | notExp (parse_tree : ParseTree)
   | notExpAndNotStmt
+  | foldBinOpArgsEmptyList
   | emptyCall
   | arithNot2Args
   | letNot2Args (args : List ParseTree)
@@ -46,6 +47,15 @@ mutual
           | _ => .error .notExpServis
       | .call [] => .error .emptyCall
 
+  partial def foldBinOpArgs (oper : BinOp) (first_ast : UnTyASTExpr) (rest : List ParseTree) : SPExcept UnTyASTExpr :=
+    match rest with
+      | [second] => do
+        let second_ast ← expParser second
+        return (.binOp oper first_ast second_ast)
+      | second :: rest_rest => do
+        let second_ast ← expParser second
+        (foldBinOpArgs oper (.binOp oper first_ast second_ast) rest_rest)
+      | [] => .error .foldBinOpArgsEmptyList
   partial def binOpParser (oper : BinOp) (args : List ParseTree) : SPExcept UnTyASTExpr := do
     match args with
       | [] => Except.error SecondParserError.emptyCall
@@ -56,8 +66,7 @@ mutual
         return (UnTyASTExpr.binOp  oper arg1_ast arg2_ast)
       | arg1 :: rest => do
         let arg1_ast ← expParser arg1
-        let rest_ast ← (binOpParser oper rest)
-        return .binOp oper arg1_ast rest_ast
+        foldBinOpArgs oper arg1_ast rest
 
   partial def minusParser (args : List ParseTree) : SPExcept UnTyASTExpr :=
     match args with
