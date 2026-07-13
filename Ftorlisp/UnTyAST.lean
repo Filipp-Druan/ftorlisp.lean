@@ -5,8 +5,10 @@ open Ftorlisp.OpTypes
 namespace Ftorlisp.UnTyAST
 
 mutual
+
   inductive UnTyASTExpr where
     | intLit (val : Int)
+    | bool (val : Bool)
     | sym (name : String)
     | binOp (op : BinOp) (arg1 arg2 : UnTyASTExpr)
     | unOp (op : UnOp) (arg : UnTyASTExpr)

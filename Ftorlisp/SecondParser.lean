@@ -37,7 +37,10 @@ mutual
   partial def expParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
       | .int val => .ok $ .intLit val
-      | .sym name => .ok $ .sym name
+      | .sym name => match name with
+        | "true" => .ok $ .bool true
+        | "false" => .ok $ .bool false
+        | _ => .ok $ .sym name
       | .call (oper :: args) =>
         match oper with
           | .sym "+" => binOpParser .add args
@@ -120,4 +123,8 @@ end
 
 #eval do
   let pt ← (exprParser ⟨"(let num (+ 1 2 3))", 0⟩)
+  return astParser pt.val
+
+#eval do
+  let pt ← (exprParser ⟨"(let bool-var true)", 0⟩)
   return astParser pt.val

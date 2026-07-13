@@ -21,6 +21,9 @@ namespace TyTable
   def int (ty_table : TyTable) : Ty :=
     (ty_table.lookup "Int").get!
 
+  def bool (ty_table : TyTable) : Ty :=
+    (ty_table.lookup "Bool").get!
+
   def isInt (ty_table : TyTable) (ty : Ty) : Bool :=
     ty_table.int == ty
 end TyTable
@@ -39,7 +42,7 @@ end Environment
 mutual
   inductive TyASTExpr where
     | int (ty : Ty) (val : Int)
-
+    | bool (ty : Ty) (val : Bool)
     | binOp (ty : Ty) (op : BinOp) (arg1 arg2 : TyASTExpr)
     | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
     | varRead (ty : Ty) (name : String)
@@ -65,6 +68,7 @@ namespace TyASTExpr
   def ty (ast: TyASTExpr) : Ty :=
     match ast with
       | .int ty _ => ty
+      | .bool ty _ => ty
       | .varRead ty _ => ty
       | .binOp ty _ _ _ => ty
       | .unOp ty _ _ => ty
@@ -83,6 +87,7 @@ mutual
 partial def expTyInference (exp : UnTyASTExpr) (ty_table : TyTable) (env : Environment) : TyInfExcept TyASTExpr :=
   match exp with
     | .intLit val => .ok $ .int ty_table.int val
+    | .bool val => .ok $ .bool ty_table.bool val
     | .sym name => match (env.lookup name) with
       | .some ty => .ok $ .varRead ty name
       | .none => .error .undefinedVar
