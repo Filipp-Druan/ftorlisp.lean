@@ -23,7 +23,7 @@ namespace TyTable
     let map : HashMap String Ty := ∅
     let full_map := map.insertMany [
       ("Int", .int),
-      ("Bool", .int)
+      ("Bool", .bool)
     ]
     ⟨full_map⟩
 
@@ -40,23 +40,23 @@ namespace TyTable
     ty_table.int == ty
 end TyTable
 
-structure Environment where
-  parent : Option Environment
+structure VarTyEnv where
+  parent : Option VarTyEnv
   scope : HashMap String Ty
 deriving Repr, BEq
 
-namespace Environment
+namespace VarTyEnv
 
-  def init : Environment :=
+  def init : VarTyEnv :=
     {parent := .none, scope := .emptyWithCapacity}
 
-  def lookup (env : Environment) (name : String) : Option Ty :=
+  def lookup (env : VarTyEnv) (name : String) : Option Ty :=
     env.scope.get? name
 
-  def insert (env : Environment) (name : String) (ty : Ty) : Environment :=
+  def insert (env : VarTyEnv) (name : String) (ty : Ty) : VarTyEnv :=
     { env with scope := env.scope.insert name ty}
 
-end Environment
+end VarTyEnv
 
 mutual
   inductive TyASTExpr where
@@ -65,6 +65,7 @@ mutual
     | binOp (ty : Ty) (op : BinOp) (arg1 arg2 : TyASTExpr)
     | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
     | varRead (ty : Ty) (name : String)
+    | if_expr (ty : Ty) (test : TyASTExpr) (then_exp : TyASTExpr) (else_exp : TyASTExpr)
   deriving Inhabited, Repr
 
   inductive TyASTStmt where
@@ -81,6 +82,8 @@ mutual
   | arithArgsTypeMismatch (arg1 arg2 : TyASTExpr)
   | arithNoArgs
   | negNotNum (arg : TyASTExpr)
+  | ifTypeMissmatch (then_ast : TyASTExpr) (else_ast : TyASTExpr)
+  | ifConditionNotBool (test : TyASTExpr)
   deriving Repr, BEq
 
 end
@@ -93,18 +96,19 @@ namespace TyASTExpr
       | .varRead ty _ => ty
       | .binOp ty _ _ _ => ty
       | .unOp ty _ _ => ty
+      | .if_expr ty _ _ _ => ty
 end TyASTExpr
 
 abbrev TyInfExcept := Except TyInfError
 
 
 inductive TyInfRes (α : Type) where
-  | envUpdate (env : Environment)
+  | envUpdate (env : VarTyEnv)
   | ty (ty : α)
 deriving Repr, BEq
 
 mutual
-  private partial def expTyInference (exp : UnTyASTExpr) (ty_table : TyTable) (env : Environment) : TyInfExcept TyASTExpr :=
+  private partial def expTyInference (exp : UnTyASTExpr) (ty_table : TyTable) (env : VarTyEnv) : TyInfExcept TyASTExpr :=
     match exp with
       | .intLit val => .ok $ .int ty_table.int val
       | .bool val => .ok $ .bool ty_table.bool val
@@ -127,16 +131,28 @@ mutual
           return (.unOp arg_ast.ty .neg arg_ast)
         else
           .error $ .negNotNum arg_ast
+      | .if_expr test then_exp else_exp => do
+        let test_ast ← expTyInference test ty_table env
+        let then_ast ← expTyInference then_exp ty_table env
+        let else_ast ← expTyInference else_exp ty_table env
 
-  private partial def stmtTyInference (stmt : UnTyASTStmt) (ty_table : TyTable) (env : Environment) : TyInfExcept TyASTStmt := do
+        match test_ast.ty with
+          | .bool =>
+            if then_ast.ty == else_ast.ty then
+              return .if_expr then_ast.ty test_ast then_ast else_ast
+            else
+              .error $ .ifTypeMissmatch then_ast else_ast
+          | _ => .error $ .ifConditionNotBool test_ast
+
+  private partial def stmtTyInference (stmt : UnTyASTStmt) (ty_table : TyTable) (env : VarTyEnv) : TyInfExcept TyASTStmt := do
     match stmt with
       | .let_stmt name val => do
         let val_ast ← expTyInference val ty_table env
         return (.let_stmt val_ast.ty name val_ast)
 
-  partial def astTyInference (ast : UnTyAST) (ty_table : TyTable) (env : Environment) : TyInfExcept TyAST := do
+  partial def astTyInference (ast : UnTyAST) (ty_table : TyTable) (env : VarTyEnv) : TyInfExcept TyAST := do
     match ast with
-      | .exp exp => do
+      | .expr exp => do
         let exp_typed ← expTyInference exp ty_table env
         return .exp exp_typed
       | .stmt stmt => do
@@ -145,7 +161,7 @@ mutual
 end
 
 
-partial def programTyInference (ast_list : List UnTyAST) (ty_table : TyTable) (env : Environment) : TyInfExcept $ (List TyAST × Environment) := do
+partial def programTyInference (ast_list : List UnTyAST) (ty_table : TyTable) (env : VarTyEnv) : TyInfExcept $ (List TyAST × VarTyEnv) := do
   match ast_list with
     | [] => return ([], env)
     | ast :: rest => do
