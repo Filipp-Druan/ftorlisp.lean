@@ -12,17 +12,6 @@ inductive GeneralError where
   | tyInfError (err : TyInfError)
 deriving Repr
 
-#eval do
-  let env := Environment.init
-  let ty_table := TyTable.init
-
-  let pt ← exprFirstParser "123" |> Except.mapError GeneralError.firstParserError
-  let utast ← astSecondParser pt |> Except.mapError GeneralError.secondParserError
-  let tyast ← astTyInference utast ty_table env |> Except.mapError GeneralError.tyInfError
-
-  return tyast
-
-
 partial def srcToTyAST (src : String) : Except GeneralError $ (List TyAST × Environment) := do
   let env := Environment.init
   let ty_table := TyTable.init
@@ -32,3 +21,6 @@ partial def srcToTyAST (src : String) : Except GeneralError $ (List TyAST × Env
   let tyast ← programTyInference utast ty_table env |> Except.mapError GeneralError.tyInfError
 
   return tyast
+
+#eval srcToTyAST "1 2 3"
+#eval srcToTyAST "(let num 5)\n (+ num num)"
