@@ -107,7 +107,7 @@ mutual
           | _ => .error $ .operatorNotSymbol oper
       | _ => .error .notStmtServis
 
-  partial def astParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
+  partial def astSecondParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
     let exp_res := exprParser parse_tree
     match exp_res with
       | Except.ok exp_ast => .ok $ .exp exp_ast
@@ -123,8 +123,8 @@ end
 
 #eval do
   let pt ← (exprFirstParser ⟨"(let num (+ 1 2 3))", 0⟩)
-  return astParser pt.val
+  return astSecondParser pt.val
 
 #eval do
   let pt ← (exprFirstParser ⟨"(let bool-var true)", 0⟩)
-  return astParser pt.val
+  return astSecondParser pt.val
