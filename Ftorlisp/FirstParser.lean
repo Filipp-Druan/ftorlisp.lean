@@ -31,11 +31,17 @@ private def symParser : Parser FirstParserError ParseTree := do
   let chars ← many1 (sat isSymbolChar)
   return .sym (String.ofList chars.toList)
 
+private def isOpenBracket (char : Char) : Bool :=
+  char ∈ ['(', '[']
+
+private def isCloseBracket (char : Char) : Bool :=
+  char ∈ [')', ']']
+
 mutual
   private partial def listParser : Parser FirstParserError ParseTree := do
-    let _ ←  char '('
+    let _ ←  sat isOpenBracket
     let exprs ← sepBy exprParser ws
-    let _ ← char ')'
+    let _ ← sat isCloseBracket
     return .call exprs.toList
 
   private partial def exprParser : Parser FirstParserError ParseTree := do
