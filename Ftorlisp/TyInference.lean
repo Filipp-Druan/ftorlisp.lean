@@ -8,8 +8,9 @@ open Std (HashMap)
 
 namespace Ftorlisp.TyInference
 
-structure Ty where
-  name : String
+inductive Ty where
+  | int
+  | bool
 deriving Inhabited, Repr, BEq
 
 
@@ -21,8 +22,8 @@ namespace TyTable
   def init : TyTable :=
     let map : HashMap String Ty := ∅
     let full_map := map.insertMany [
-      ("Int", ⟨"Int"⟩),
-      ("Bool", ⟨"Bool"⟩)
+      ("Int", .int),
+      ("Bool", .int)
     ]
     ⟨full_map⟩
 
