@@ -14,6 +14,8 @@ open Ftorlisp.OpTypes
 AST.
 -/
 
+namespace Ftorlisp.SecondParser
+
 inductive SecondParserError where
   | unknownOperator (parse_tree : ParseTree)
   | operatorNotSymbol (parse_tree : ParseTree)
