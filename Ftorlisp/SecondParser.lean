@@ -34,7 +34,7 @@ deriving Nonempty, Repr, BEq
 abbrev SPExcept := Except SecondParserError
 
 mutual
-  partial def expParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
+  private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
       | .int val => .ok $ .intLit val
       | .sym name => match name with
@@ -50,13 +50,13 @@ mutual
           | _ => .error .notExpServis
       | .call [] => .error .emptyCall
 
-  partial def foldBinOpArgs (oper : BinOp) (first_ast : UnTyASTExpr) (rest : List ParseTree) : SPExcept UnTyASTExpr :=
+  private partial def foldBinOpArgs (oper : BinOp) (first_ast : UnTyASTExpr) (rest : List ParseTree) : SPExcept UnTyASTExpr :=
     match rest with
       | [second] => do
-        let second_ast ← expParser second
+        let second_ast ← exprParser second
         return (.binOp oper first_ast second_ast)
       | second :: rest_rest => do
-        let second_ast ← expParser second
+        let second_ast ← exprParser second
         (foldBinOpArgs oper (.binOp oper first_ast second_ast) rest_rest)
       | [] => .error .foldBinOpArgsEmptyList
   partial def binOpParser (oper : BinOp) (args : List ParseTree) : SPExcept UnTyASTExpr := do
@@ -64,33 +64,33 @@ mutual
       | [] => Except.error SecondParserError.emptyCall
       | [_] => .error .arithNot2Args
       | [arg1, arg2] => do
-        let arg1_ast ← expParser arg1
-        let arg2_ast ← expParser arg2
+        let arg1_ast ← exprParser arg1
+        let arg2_ast ← exprParser arg2
         return (UnTyASTExpr.binOp  oper arg1_ast arg2_ast)
       | arg1 :: rest => do
-        let arg1_ast ← expParser arg1
+        let arg1_ast ← exprParser arg1
         foldBinOpArgs oper arg1_ast rest
 
   partial def minusParser (args : List ParseTree) : SPExcept UnTyASTExpr :=
     match args with
       | [] => .error .emptyCall
       | [arg] => do
-        let arg_ast ← expParser arg
+        let arg_ast ← exprParser arg
         return .unOp .neg arg_ast
       | [arg1, arg2] => do
-        let arg1_ast ← expParser arg1
-        let arg2_ast ← expParser arg2
+        let arg1_ast ← exprParser arg1
+        let arg2_ast ← exprParser arg2
         return .binOp .sub arg1_ast arg2_ast
       | arg1 :: rest => do
-          let arg1_ast ← expParser arg1
+          let arg1_ast ← exprParser arg1
           let rest_ast ← (binOpParser .sub rest)
           return .binOp .sub arg1_ast rest_ast
 
   partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
     match args with
       | [name, val] => do
-        let name_ast ← expParser name
-        let val_ast ← expParser val
+        let name_ast ← exprParser name
+        let val_ast ← exprParser val
 
         match name_ast with
           | .sym name_str => .ok $ .let_stmt name_str val_ast
@@ -108,7 +108,7 @@ mutual
       | _ => .error .notStmtServis
 
   partial def astParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
-    let exp_res := expParser parse_tree
+    let exp_res := exprParser parse_tree
     match exp_res with
       | Except.ok exp_ast => .ok $ .exp exp_ast
       | .error .notExpServis =>
