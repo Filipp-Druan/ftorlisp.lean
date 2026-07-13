@@ -32,6 +32,9 @@ inductive SecondParserError where
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
   | ifNot3Args (args : List ParseTree)
+  | tyConsNotSym (pares_tree : ParseTree)
+  | tyNameIsSpecial
+  | tyBadExpr (pares_tree : ParseTree)
 deriving Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
@@ -57,9 +60,19 @@ mutual
           | _ => .error .notExpServis
       | .call [] => .error .emptyCall
 
-  private partial def (parse_tree : ParseTree) : SPExcept UnTyAST := do
+  private partial def tyParser(parse_tree : ParseTree) : SPExcept UnTyASTTy := do
     match parse_tree with
-      | .
+      | .sym name => .ok $ .sym name
+      | .call (head :: tail) => match head with
+        | .sym cons_ty_name => do
+          if isSpecialName cons_ty_name then
+            .error .tyNameIsSpecial
+          let arg_tys ← tail.mapM tyParser
+          return UnTyASTTy.call cons_ty_name arg_tys
+        | _ => .error $ .tyConsNotSym head
+      | _ => .error $ .tyBadExpr parse_tree
+
+
 
   private partial def ifParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
     match args with
