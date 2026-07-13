@@ -122,9 +122,9 @@ mutual
 end
 
 #eval do
-  let pt ← (exprParser ⟨"(let num (+ 1 2 3))", 0⟩)
+  let pt ← (exprFirstParser ⟨"(let num (+ 1 2 3))", 0⟩)
   return astParser pt.val
 
 #eval do
-  let pt ← (exprParser ⟨"(let bool-var true)", 0⟩)
+  let pt ← (exprFirstParser ⟨"(let bool-var true)", 0⟩)
   return astParser pt.val
