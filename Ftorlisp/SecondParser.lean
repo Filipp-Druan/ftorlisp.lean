@@ -36,6 +36,9 @@ deriving Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
 
+partial def isSpecialName (name : String) : Bool :=
+  name ∈ ["+", "-", "*", "/", "if", "dec"]
+
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
@@ -53,6 +56,10 @@ mutual
           | .sym "if" => ifParser args
           | _ => .error .notExpServis
       | .call [] => .error .emptyCall
+
+  private partial def (parse_tree : ParseTree) : SPExcept UnTyAST := do
+    match parse_tree with
+      | .
 
   private partial def ifParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
     match args with
