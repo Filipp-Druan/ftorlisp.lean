@@ -15,6 +15,11 @@ mutual
     | if_expr (test : UnTyASTExpr) (then_exp : UnTyASTExpr) (else_exp : UnTyASTExpr)
   deriving Nonempty, Repr, BEq
 
+  inductive UnTyASTTy where
+   | sym (name : String)
+   | call (name : String) (args : List UnTyASTTy)
+  deriving Nonempty, Repr, BEq
+
   inductive UnTyASTStmt where
     | let_stmt (name : String) (val : UnTyASTExpr) -- name - всегда .sym
 
