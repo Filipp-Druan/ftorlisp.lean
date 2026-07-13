@@ -119,12 +119,15 @@ mutual
           | .error err => .error err
       | .error err => .error err
 
+  partial def programSecondParser (prog_pares_tree : List ParseTree) : SPExcept $ List UnTyAST := do
+    let prog_ast ← prog_pares_tree.mapM astSecondParser
+    return prog_ast
 end
 
 #eval do
-  let pt ← (exprFirstParser ⟨"(let num (+ 1 2 3))", 0⟩)
-  return astSecondParser pt.val
+  let pt ← (exprFirstParser "(let num (+ 1 2 3))")
+  return astSecondParser pt
 
 #eval do
-  let pt ← (exprFirstParser ⟨"(let bool-var true)", 0⟩)
-  return astSecondParser pt.val
+  let pt ← (exprFirstParser "(let boo true)")
+  return astSecondParser pt
