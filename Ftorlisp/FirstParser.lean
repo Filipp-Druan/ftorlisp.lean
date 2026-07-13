@@ -51,8 +51,15 @@ partial def exprFirstParser (src : String) : Except FirstParserError ParseTree :
       | _ => unreachable!
     | .ok parser_res => .ok parser_res.val
 
-partial def programFirstParser : Parser FirstParserError (List ParseTree) := do
+partial def programParser : Parser FirstParserError (List ParseTree) := do
   let arr ← many exprParser
   return arr.toList
+
+partial def programFirstParser (src : String) : Except FirstParserError (List ParseTree) :=
+  match programParser ⟨src, 0⟩ with
+    | .error err => match err.err with
+      | .custom fperr => .error fperr
+      | _ => unreachable!
+    | .ok parser_res => .ok parser_res.val
 
 #eval (exprFirstParser "(+ 1 2 (* 3 4))")
