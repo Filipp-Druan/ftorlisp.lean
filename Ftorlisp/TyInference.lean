@@ -115,6 +115,7 @@ mutual
       | .sym name => match (env.lookup name) with
         | .some ty => .ok $ .varRead ty name
         | .none => .error .undefinedVar
+
       | .binOp op arg1 arg2 => do
         let arg1_ast ← expTyInference arg1 ty_table env
         let arg2_ast ← expTyInference arg2 ty_table env
@@ -131,6 +132,7 @@ mutual
           return (.unOp arg_ast.ty .neg arg_ast)
         else
           .error $ .negNotNum arg_ast
+
       | .if_expr test then_exp else_exp => do
         let test_ast ← expTyInference test ty_table env
         let then_ast ← expTyInference then_exp ty_table env
