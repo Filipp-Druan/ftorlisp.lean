@@ -31,6 +31,7 @@ inductive SecondParserError where
   | letNot2Args (args : List ParseTree)
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
+  | ifNot3Args (args : List ParseTree)
 deriving Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
@@ -49,8 +50,22 @@ mutual
           | .sym "*" => binOpParser .mul args
           | .sym "-" => minusParser args
           | .sym "/" => binOpParser .div args
+          | .sym "if" => ifParser args
           | _ => .error .notExpServis
       | .call [] => .error .emptyCall
+
+  private partial def ifParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | [] => .error .emptyCall
+      | [_] => .error $ .ifNot3Args args
+      | [_, _,] => .error $ .ifNot3Args args
+      | [test, then_exp, else_exp] => do
+        let test_ast ← exprParser test
+        let then_ast ← exprParser then_exp
+        let else_ast ← exprParser else_exp
+
+        return .if_expr test_ast then_ast else_ast
+      | _ => .error $ .ifNot3Args args
 
   private partial def foldBinOpArgs (oper : BinOp) (first_ast : UnTyASTExpr) (rest : List ParseTree) : SPExcept UnTyASTExpr :=
     match rest with
@@ -88,6 +103,7 @@ mutual
           let rest_ast ← (binOpParser .sub rest)
           return .binOp .sub arg1_ast rest_ast
 
+
   private partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
     match args with
       | [name, val] => do
@@ -112,7 +128,7 @@ mutual
   partial def astSecondParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
     let exp_res := exprParser parse_tree
     match exp_res with
-      | Except.ok exp_ast => .ok $ .exp exp_ast
+      | Except.ok exp_ast => .ok $ .expr exp_ast
       | .error .notExpServis =>
         let stmt_res := stmtParser parse_tree
         match stmt_res with
