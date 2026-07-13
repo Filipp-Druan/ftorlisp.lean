@@ -23,6 +23,7 @@ mutual
   inductive UnTyASTStmt where
     | let_stmt (name : String) (val : UnTyASTExpr)
     | dec (name : String) (arg_tys : List UnTyASTTy) (ret_ty : UnTyASTTy)
+  deriving Repr, BEq
 
   inductive UnTyAST where
     | expr (val : UnTyASTExpr)
