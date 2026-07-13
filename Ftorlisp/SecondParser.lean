@@ -35,6 +35,12 @@ inductive SecondParserError where
   | tyConsNotSym (pares_tree : ParseTree)
   | tyNameIsSpecial
   | tyBadExpr (pares_tree : ParseTree)
+  | decEmpty
+  | decArgsAndRetNo (args : List ParseTree)
+  | decRetNo (args : List ParseTree)
+  | decArgsNotList (args : List ParseTree)
+  | decFunNameNotSym (args : List ParseTree)
+  | decToMachDecArgs (args : List ParseTree)
 deriving Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
@@ -71,6 +77,22 @@ mutual
           return UnTyASTTy.call cons_ty_name arg_tys
         | _ => .error $ .tyConsNotSym head
       | _ => .error $ .tyBadExpr parse_tree
+
+  private partial def decParser (args : List ParseTree) : SPExcept UnTyASTStmt := do
+    match args with
+      | [] => .error .decEmpty
+      | [_name] => .error $ .decArgsAndRetNo args
+      | [_name, _arg_tys] => .error $ .decRetNo args
+      | [name_tree, arg_tys, ret_ty] => match name_tree with
+        | .sym fun_name => do
+          match arg_tys with
+            | .call list => do
+              let arg_tys_asts ← list.mapM tyParser
+              let ret_ty_ast ← tyParser ret_ty
+              return .dec fun_name arg_tys_asts ret_ty_ast
+            | _ => .error $ .decArgsNotList args
+        | _ => .error $ .decFunNameNotSym args
+      | _ => .error $ .decToMachDecArgs args
 
 
 
@@ -141,6 +163,7 @@ mutual
       | .call (oper :: args) =>
         match oper with
           | .sym "let" => letStmtParser args
+          | .sym "dec" => decParser args
           | .sym _ => .error $ .unknownOperator oper
           | _ => .error $ .operatorNotSymbol oper
       | _ => .error .notStmtServis
@@ -168,4 +191,8 @@ end
 
 #eval do
   let pt ← (exprFirstParser "(let boo true)")
+  return astSecondParser pt
+
+#eval do
+  let pt ← (exprFirstParser "(dec foo [Bool] Bool)")
   return astSecondParser pt
