@@ -10,13 +10,22 @@ structure Ty where
   name : String
 deriving Inhabited, Repr, BEq
 
+
 structure TyTable where
-  table : HashMap String Ty
+  map : HashMap String Ty
 deriving Repr, BEq
 
 namespace TyTable
+  def init : TyTable :=
+    let map : HashMap String Ty := ∅
+    let full_map := map.insertMany [
+      ("Int", ⟨"Int"⟩),
+      ("Bool", ⟨"Bool"⟩)
+    ]
+    ⟨full_map⟩
+
   def lookup (ty_table : TyTable) (name : String) : Option Ty :=
-    ty_table.table.get? name
+    ty_table.map.get? name
 
   def int (ty_table : TyTable) : Ty :=
     (ty_table.lookup "Int").get!
@@ -29,13 +38,20 @@ namespace TyTable
 end TyTable
 
 structure Environment where
-  scopes : List (HashMap String Ty)
+  parent : Option Environment
+  scope : HashMap String Ty
 deriving Repr, BEq
 
 namespace Environment
 
-def lookup (env : Environment) (name : String) : Option Ty :=
-  env.scopes.findSome? (fun scope => scope.get? name)
+  def init : Environment :=
+    {parent := .none, scope := .emptyWithCapacity}
+
+  def lookup (env : Environment) (name : String) : Option Ty :=
+    env.scope.get? name
+
+  def insert (env : Environment) (name : String) (ty : Ty) : Environment :=
+    { env with scope := env.scope.insert name ty}
 
 end Environment
 
@@ -50,10 +66,12 @@ mutual
 
   inductive TyASTStmt where
     | let_stmt (ty : Ty) (name : String) (val : TyASTExpr)
+  deriving Repr, BEq
 
   inductive TyAST where
     | exp (val : TyASTExpr)
     | stmt (val : TyASTStmt)
+  deriving Repr, BEq
 
   inductive TyInfError where
   | undefinedVar
@@ -122,3 +140,20 @@ mutual
         let stmt_typed ← stmtTyInference stmt ty_table env
         return .stmt stmt_typed
 end
+
+
+partial def programTyInference (ast_list : List UnTyAST) (ty_table : TyTable) (env : Environment) : TyInfExcept $ (List TyAST × Environment) := do
+  match ast_list with
+    | [] => return ([], env)
+    | ast :: rest => do
+      let tyast ← astTyInference ast ty_table env
+      match tyast with
+        | .exp _ => do
+          let (rest_tyast, rest_env) ← (programTyInference rest ty_table env)
+          return (tyast :: rest_tyast, rest_env)
+        | .stmt stmt => do
+          match stmt with
+            | .let_stmt ty name _ => do
+              let new_env := env.insert name ty
+              let (rest_tyast, rest_env) ← (programTyInference rest ty_table new_env)
+              return (tyast :: rest_tyast, rest_env)
