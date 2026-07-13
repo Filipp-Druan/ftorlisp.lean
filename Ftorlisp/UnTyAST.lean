@@ -13,6 +13,8 @@ mutual
     | binOp (op : BinOp) (arg1 arg2 : UnTyASTExpr)
     | unOp (op : UnOp) (arg : UnTyASTExpr)
     | if_expr (test : UnTyASTExpr) (then_exp : UnTyASTExpr) (else_exp : UnTyASTExpr)
+
+    | dec (name : String) (arg_tys : List UnTyASTTy) (ret_ty : UnTyASTTy)
   deriving Nonempty, Repr, BEq
 
   inductive UnTyASTTy where
