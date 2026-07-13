@@ -34,18 +34,18 @@ def symParser : Parser FirstParserError ParseTree := do
 mutual
   partial def listParser : Parser FirstParserError ParseTree := do
     let _ ←  char '('
-    let exprs ← sepBy exprParser ws
+    let exprs ← sepBy exprFirstParser ws
     let _ ← char ')'
     return .call exprs.toList
 
-  partial def exprParser : Parser FirstParserError ParseTree := do
+  partial def exprFirstParser : Parser FirstParserError ParseTree := do
     (withErr (.custom FirstParserError.int)  intParser) <|>
     (withErr (.custom FirstParserError.sym)  symParser) <|>
     (withErr (.custom FirstParserError.list) listParser)
 end
 
-partial def programParser : Parser FirstParserError (List ParseTree) := do
-  let arr ← many exprParser
+partial def programFirstParser : Parser FirstParserError (List ParseTree) := do
+  let arr ← many exprFirstParser
   return arr.toList
 
-#eval (exprParser (ParserState.mk "(+ 1 2 (* 3 4))" 0))
+#eval (exprFirstParser (ParserState.mk "(+ 1 2 (* 3 4))" 0))
