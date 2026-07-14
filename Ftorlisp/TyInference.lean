@@ -1,48 +1,29 @@
 import Ftorlisp.UnTyAST
+import Ftorlisp.TyAST
 import Ftorlisp.OpTypes
 import Ftorlisp.Ty
 import Ftorlisp.Context
 
 open Ftorlisp.OpTypes
 open Ftorlisp.UnTyAST
+open Ftorlisp.TyAST
 open Ftorlisp.Ty
 open Ftorlisp.Context
 
 namespace Ftorlisp.TyInference
 
-mutual
-  inductive TyASTExpr where
-    | int (ty : Ty) (val : Int)
-    | bool (ty : Ty) (val : Bool)
-    | binOp (ty : Ty) (op : BinOp) (arg1 arg2 : TyASTExpr)
-    | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
-    | varRead (ty : Ty) (name : String)
-    | if_expr (ty : Ty) (test : TyASTExpr) (then_exp : TyASTExpr) (else_exp : TyASTExpr)
-  deriving Inhabited, Repr
-
-  inductive TyASTStmt where
-    | let_stmt (ty : Ty) (name : String) (val : TyASTExpr)
-    | dec (ty : Ty) (name : String)
-  deriving Repr, BEq
-
-  inductive TyAST where
-    | exp (val : TyASTExpr)
-    | stmt (val : TyASTStmt)
-  deriving Repr, BEq
-
-  inductive TyInfError where
+inductive TyInfError where
   | undefinedVar
   | arithArgsTypeMismatch (arg1 arg2 : TyASTExpr)
   | arithNoArgs
   | negNotNum (arg : TyASTExpr)
   | ifTypeMissmatch (then_ast : TyASTExpr) (else_ast : TyASTExpr)
   | ifConditionNotBool (test : TyASTExpr)
-  | unknownTy (ty_ast : UnTyASTTy)
-  | genericArgsNumMismatch (ty_ast : UnTyASTTy) (correct_num : Nat)
-  | genericFirstNotCons (ty_ast : UnTyASTTy)
-  deriving Repr, BEq
-
-end
+  | unknownTy (unty_ast : UnTyASTTy)
+  | genericArgsNumMismatch (unty_ast : UnTyASTTy) (correct_num : Nat)
+  | genericFirstNotCons (unty_ast : UnTyASTTy)
+  | decAlreadyDeclared (ty_ast : TyAST)
+deriving Repr, BEq
 
 namespace TyASTExpr
   def ty (ast: TyASTExpr) : Ty :=
@@ -148,11 +129,22 @@ partial def programTyInference
       let tyast ← astTyInference ast context
       match tyast with
         | .exp _ => do
-          let (rest_tyast, rest_env) ← (programTyInference rest context)
-          return (tyast :: rest_tyast, rest_env)
+          let (rest_tyast, rest_context) ← (programTyInference rest context)
+
+          return (tyast :: rest_tyast, rest_context)
         | .stmt stmt => do
           match stmt with
             | .let_stmt ty name _ => do
               let new_context := context.varTyInsert name ty
-              let (rest_tyast, rest_env) ← (programTyInference rest new_context)
-              return (tyast :: rest_tyast, rest_env)
+
+              let (rest_tyast, rest_context) ← (programTyInference rest new_context)
+
+              return (tyast :: rest_tyast, rest_context)
+            | .dec ty name => do
+              let fn := Fn.Fn.makeFromDecTy ty
+              let (new_context, success) := context.fnInsert name fn
+              if !success then
+                .error $ .decAlreadyDeclared tyast
+              else
+                let (rest_tyast, rest_context) ← (programTyInference rest new_context)
+                return (tyast :: rest_tyast, rest_context)
