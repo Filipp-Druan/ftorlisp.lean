@@ -47,7 +47,7 @@ deriving Inhabited, Nonempty, Repr, BEq
 abbrev SPExcept := Except SecondParserError
 
 partial def isSpecialName (name : String) : Bool :=
-  name ∈ ["+", "-", "*", "/", "if", "dec"]
+  name ∈ ["+", "-", "*", "/", "let", "if", "dec"]
 
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
@@ -64,7 +64,11 @@ mutual
           | .sym "-" => minusParser args
           | .sym "/" => binOpParser .div args
           | .sym "if" => ifParser args
-          | .sym _ => fnParser parse_tree
+          | .sym name =>
+            if isSpecialName name then
+              .error .notExpServis
+            else
+              fnParser parse_tree
           | .call _ => fnParser parse_tree
           | _ => .error $ .fnCallIncorrectOpertor parse_tree
       | .call [] => .error .emptyCall
