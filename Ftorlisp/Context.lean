@@ -1,8 +1,10 @@
 import Std.Data.HashMap
 import Ftorlisp.Ty
+import Ftorlisp.Fn
 
 open Std (HashMap)
 open Ftorlisp.Ty
+open Ftorlisp.Fn
 
 namespace Ftorlisp.Context
 
@@ -51,13 +53,14 @@ namespace VarTyEnv
 end VarTyEnv
 
 structure Context where
+  fn_table : HashMap String Fn
   var_ty_env : VarTyEnv
   ty_table : TyTable
 deriving Repr, BEq
 
 namespace Context
   def init : Context :=
-    ⟨.init, .init⟩
+    ⟨∅, .init, .init⟩
 
   def varTyLookup (context : Context) (name : String) : Option Ty :=
     context.var_ty_env.lookup name
@@ -67,6 +70,23 @@ namespace Context
 
   def tyLookup (context : Context) (name : String) : Option Ty :=
     context.ty_table.lookup name
+
+  def fnInsert (context : Context) (name : String) (fn : Fn) : (Context × Bool) :=
+    let isIn := name ∈ context.fn_table
+    if isIn then
+      (context, false)
+    else
+      ({context with fn_table := context.fn_table.insert name fn}, true)
+
+  def fnAddDef (context : Context) (name : String) (fn_def : FnDef) : (Context × Bool) :=
+    let opt_fn := context.fn_table[name]?
+    match opt_fn with
+      | .some fn =>
+        let new_fn := fn.addDef fn_def
+        let new_context := {context with fn_table := context.fn_table.insert name new_fn}
+        (new_context, true)
+      | .none =>
+        (context, false)
 
   def tyInt (context : Context) : Ty :=
     context.ty_table.int
