@@ -58,7 +58,8 @@ end TyASTExpr
 abbrev TyInfExcept := Except TyInfError
 
 mutual
-  private partial def expTyInference (exp : UnTyASTExpr) (context : Context) : TyInfExcept TyASTExpr :=
+  private partial def expTyInference
+    (exp : UnTyASTExpr) (context : Context) : TyInfExcept TyASTExpr :=
     match exp with
       | .intLit val => .ok $ .int context.tyInt val
       | .bool val => .ok $ .bool context.tyBool val
@@ -115,7 +116,8 @@ mutual
             | _ => .error $ .genericFirstNotCons ty_ast
           | .none => .error $ .unknownTy ty_ast
 
-  private partial def stmtTyInference (stmt : UnTyASTStmt) (context : Context) : TyInfExcept TyASTStmt := do
+  private partial def stmtTyInference
+    (stmt : UnTyASTStmt) (context : Context) : TyInfExcept TyASTStmt := do
     match stmt with
       | .let_stmt name val => do
         let val_ast ← expTyInference val context
@@ -126,7 +128,8 @@ mutual
         return .dec (.fn args_tys ret_ty) name
 
 
-  partial def astTyInference (ast : UnTyAST) (context : Context) : TyInfExcept TyAST := do
+  partial def astTyInference
+    (ast : UnTyAST) (context : Context) : TyInfExcept TyAST := do
     match ast with
       | .expr exp => do
         let exp_typed ← expTyInference exp context
@@ -137,7 +140,8 @@ mutual
 end
 
 
-partial def programTyInference (ast_list : List UnTyAST) (context : Context) : TyInfExcept $ (List TyAST × Context) := do
+partial def programTyInference
+  (ast_list : List UnTyAST) (context : Context) : TyInfExcept $ (List TyAST × Context) := do
   match ast_list with
     | [] => return ([], context)
     | ast :: rest => do
