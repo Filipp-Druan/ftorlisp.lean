@@ -6,4 +6,22 @@ inductive Ty where
   | generic_cons (name : String) (arg_tys_num : Nat)
   | generic_spec (gen_cons : Ty) (arg_tys : List Ty)
   | fn (arg_tys : List Ty) (ret_ty : Ty)
-deriving Inhabited, Repr, BEq
+deriving Inhabited, BEq
+
+def tyToString : Ty → String
+    | .int => "Int"
+    | .bool => "Bool"
+    | .fn arg_tys ret_ty =>
+      let argsStr := "[" ++ (String.intercalate " " (arg_tys.map tyToString)) ++ "]"
+      "(Fn " ++ argsStr ++  "" ++ " " ++ tyToString ret_ty ++ ")"
+    | .generic_cons name _ => name
+    | .generic_spec cons arg_tys =>
+      let argsStr := (String.intercalate " " (arg_tys.map tyToString))
+      "(" ++ (tyToString cons) ++ argsStr ++ ")"
+
+instance : ToString Ty where
+  toString := tyToString
+
+instance : Repr Ty where
+  reprPrec ty _ :=
+    Repr.reprPrec  (tyToString ty) 0
