@@ -32,16 +32,17 @@ inductive SecondParserError where
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
   | ifNot3Args (args : List ParseTree)
-  | tyConsNotSym (pares_tree : ParseTree)
+  | tyConsNotSym (parse_tree : ParseTree)
   | tyNameIsSpecial
-  | tyBadExpr (pares_tree : ParseTree)
+  | tyBadExpr (parse_tree : ParseTree)
   | decEmpty
   | decArgsAndRetNo (args : List ParseTree)
   | decRetNo (args : List ParseTree)
   | decArgsNotList (args : List ParseTree)
   | decFunNameNotSym (args : List ParseTree)
   | decToMachDecArgs (args : List ParseTree)
-deriving Nonempty, Repr, BEq
+  | fnCallIncorrectOpertor (parse_tree : ParseTree)
+deriving Inhabited, Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
 
@@ -63,8 +64,19 @@ mutual
           | .sym "-" => minusParser args
           | .sym "/" => binOpParser .div args
           | .sym "if" => ifParser args
-          | _ => .error .notExpServis
+          | .sym _ => fnParser parse_tree
+          | .call _ => fnParser parse_tree
+          | _ => .error $ .fnCallIncorrectOpertor parse_tree
       | .call [] => .error .emptyCall
+
+  private partial def fnParser
+    (parse_tree : ParseTree) : SPExcept UnTyASTExpr := do
+    match parse_tree with
+      | .call list => do
+        let ast_list ← list.mapM exprParser
+        return .fn_call ast_list
+      | _ => unreachable!
+
 
   private partial def tyParser(parse_tree : ParseTree) : SPExcept UnTyASTTy := do
     match parse_tree with
