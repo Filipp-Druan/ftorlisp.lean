@@ -25,6 +25,7 @@ inductive TyInfError where
   | decAlreadyDeclared (ty_ast : TyAST)
   | fnTyMismatch (oper : TyASTExpr) (args : List TyASTExpr)
   | fnOperNotFn (oper : TyASTExpr)
+  | fnBadArgsNum (oper : TyASTExpr) (args : List TyASTExpr)
 deriving Repr, BEq
 
 abbrev TyInfExcept := Except TyInfError
@@ -82,11 +83,14 @@ mutual
     let actual_tys := arg_tys_asts.map (·.ty)
     match oper_ty_ast.ty with
       | .fn expexted_tys ret_ty => do
-        let eq_list := List.zipWith (· == ·) expexted_tys actual_tys
-        if eq_list.all (·) then
-          return .fn_expr ret_ty (oper_ty_ast :: arg_tys_asts)
+        if expexted_tys.length == actual_tys.length then
+          let eq_list := List.zipWith (· == ·) expexted_tys actual_tys
+          if eq_list.all (·) then
+            return .fn_expr ret_ty (oper_ty_ast :: arg_tys_asts)
+          else
+            .error $ .fnTyMismatch oper_ty_ast arg_tys_asts
         else
-          .error $ .fnTyMismatch oper_ty_ast arg_tys_asts
+          .error $ .fnBadArgsNum oper_ty_ast arg_tys_asts
       | _ => .error $ .fnOperNotFn oper_ty_ast
 
 
