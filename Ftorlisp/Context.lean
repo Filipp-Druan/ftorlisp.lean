@@ -76,7 +76,10 @@ namespace Context
     if isIn then
       (context, false)
     else
-      ({context with fn_table := context.fn_table.insert name fn}, true)
+      ({context with
+        fn_table   := context.fn_table.insert   name fn,
+        var_ty_env := context.var_ty_env.insert name fn.ty},
+       true)
 
   def fnAddDef (context : Context) (name : String) (fn_def : FnDef) : (Context × Bool) :=
     let opt_fn := context.fn_table[name]?
