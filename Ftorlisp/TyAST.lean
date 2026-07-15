@@ -83,7 +83,7 @@ mutual
       let indNext := ind + 4
       let argsStrs := args.map (fun e => exprToString e indNext)
       let body := String.intercalate s!"\n{spaces indNext}" argsStrs
-      s!"({body}) : {Ty.tyToString ty}"
+      s!"(eq {body}) : {Ty.tyToString ty}"
     | .fn_expr ty list =>
       -- Для вызова функции отступ для аргументов равен 2 символам (сразу под именем функции, учитывая "(" )
       let indNext := ind + 2
