@@ -31,6 +31,7 @@ inductive SecondParserError where
   | letNot2Args (args : List ParseTree)
   | letValNotExp (ast : UnTyAST)
   | letNameNotSym
+  | eqArgsLess2 (args : List ParseTree)
   | ifNot3Args (args : List ParseTree)
   | tyConsNotSym (parse_tree : ParseTree)
   | tyNameIsSpecial
@@ -47,7 +48,7 @@ deriving Inhabited, Nonempty, Repr, BEq
 abbrev SPExcept := Except SecondParserError
 
 partial def isSpecialName (name : String) : Bool :=
-  name ∈ ["+", "-", "*", "/", "let", "if", "dec"]
+  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec"]
 
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
@@ -64,6 +65,7 @@ mutual
           | .sym "-" => minusParser args
           | .sym "/" => binOpParser .div args
           | .sym "if" => ifParser args
+          | .sym "=" => eqParser args
           | .sym name =>
             if isSpecialName name then
               .error .notExpServis
@@ -72,6 +74,15 @@ mutual
           | .call _ => fnParser parse_tree
           | _ => .error $ .fnCallIncorrectOpertor parse_tree
       | .call [] => .error .emptyCall
+
+  private partial def eqParser
+    (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    let args_asts ← args.mapM exprParser
+    if h : args_asts.length < 2 then
+      .error $ .eqArgsLess2 args
+    else
+      return .eq args_asts
+
 
   private partial def fnParser
     (parse_tree : ParseTree) : SPExcept UnTyASTExpr := do
