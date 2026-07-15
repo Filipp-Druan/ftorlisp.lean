@@ -26,4 +26,4 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 
 #eval srcToTyAST "1 2 3" .init
 #eval srcToTyAST "(let num 5) (if true (* num num) 0)" .init
-#eval srcToTyAST "(dec foo [Int] Int)" .init
+#eval srcToTyAST "(dec foo [Int] Int) (foo 5)" .init
