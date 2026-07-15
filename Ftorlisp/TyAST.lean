@@ -13,6 +13,7 @@ mutual
     | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
     | varRead (ty : Ty) (name : String)
     | if_expr (ty : Ty) (test : TyASTExpr) (then_exp : TyASTExpr) (else_exp : TyASTExpr)
+    | eq (ty : Ty) (args : List TyASTExpr)
     | fn_expr (ty : Ty) (list : List TyASTExpr)
   deriving Inhabited, BEq
 
@@ -36,6 +37,7 @@ namespace TyASTExpr
       | .varRead ty _ => ty
       | .binOp ty _ _ _ => ty
       | .unOp ty _ _ => ty
+      | .eq ty _ => ty
       | .if_expr ty _ _ _ => ty
       | .fn_expr ty _ => ty
 
@@ -75,6 +77,13 @@ mutual
       -- Длина префикса: "(if " (4 символа)
       let indNext := ind + 4
       s!"(if {exprToString test indNext}\n{spaces indNext}{exprToString then_exp indNext}\n{spaces indNext}{exprToString else_exp indNext}) : {Ty.tyToString ty}"
+
+    | .eq ty args =>
+      -- Длина префикса: "(eq " (4 символа)
+      let indNext := ind + 4
+      let argsStrs := args.map (fun e => exprToString e indNext)
+      let body := String.intercalate s!"\n{spaces indNext}" argsStrs
+      s!"({body}) : {Ty.tyToString ty}"
     | .fn_expr ty list =>
       -- Для вызова функции отступ для аргументов равен 2 символам (сразу под именем функции, учитывая "(" )
       let indNext := ind + 2
