@@ -22,7 +22,7 @@ private def intParser : Parser FirstParserError ParseTree := do
     | .none => return .int $ Int.ofNat num
 
 private def isMathChar (ch : Char) : Bool :=
-  ch == '+' || ch == '-' || ch == '*' || ch == '/'
+  ch ∈ ['+', '-', '*', '/', '=']
 
 private def isSymbolChar (ch : Char) : Bool :=
   ch.isAlphanum || isMathChar ch
