@@ -23,18 +23,9 @@ inductive TyInfError where
   | genericArgsNumMismatch (unty_ast : UnTyASTTy) (correct_num : Nat)
   | genericFirstNotCons (unty_ast : UnTyASTTy)
   | decAlreadyDeclared (ty_ast : TyAST)
+  | fnTyMismatch (oper : TyASTExpr) (args : List TyASTExpr)
+  | fnOperNotFn (oper : TyASTExpr)
 deriving Repr, BEq
-
-namespace TyASTExpr
-  def ty (ast: TyASTExpr) : Ty :=
-    match ast with
-      | .int ty _ => ty
-      | .bool ty _ => ty
-      | .varRead ty _ => ty
-      | .binOp ty _ _ _ => ty
-      | .unOp ty _ _ => ty
-      | .if_expr ty _ _ _ => ty
-end TyASTExpr
 
 abbrev TyInfExcept := Except TyInfError
 
@@ -77,6 +68,28 @@ mutual
             else
               .error $ .ifTypeMissmatch then_ast else_ast
           | _ => .error $ .ifConditionNotBool test_ast
+      | .fn_call (oper :: args) => fnCallTyInferenct oper args context
+      | .fn_call [] => unreachable!
+
+
+  private partial def fnCallTyInferenct
+    (oper : UnTyASTExpr)
+    (args : List UnTyASTExpr)
+    (context : Context): TyInfExcept TyASTExpr := do
+
+    let oper_ty_ast ← (expTyInference oper context)
+    let arg_tys_asts ← args.mapM (expTyInference · context)
+    let actual_tys := arg_tys_asts.map (·.ty)
+    match oper_ty_ast.ty with
+      | .fn expexted_tys ret_ty => do
+        let eq_list := List.zipWith (· == ·) expexted_tys actual_tys
+        if eq_list.all (·) then
+          return .fn_expr ret_ty (oper_ty_ast :: arg_tys_asts)
+        else
+          .error $ .fnTyMismatch oper_ty_ast arg_tys_asts
+      | _ => .error $ .fnOperNotFn oper_ty_ast
+
+
 
   private partial def tyTyInference
     (ty_ast : UnTyASTTy) (context : Context) : TyInfExcept Ty := do
