@@ -19,6 +19,8 @@ inductive TyInfError where
   | negNotNum (arg : TyASTExpr)
   | ifTypeMissmatch (then_ast : TyASTExpr) (else_ast : TyASTExpr)
   | ifConditionNotBool (test : TyASTExpr)
+  | eqArgsLess2 (args :  List TyASTExpr)
+  | eqTyMismatch (args :  List TyASTExpr)
   | unknownTy (unty_ast : UnTyASTTy)
   | genericArgsNumMismatch (unty_ast : UnTyASTTy) (correct_num : Nat)
   | genericFirstNotCons (unty_ast : UnTyASTTy)
@@ -69,6 +71,16 @@ mutual
             else
               .error $ .ifTypeMissmatch then_ast else_ast
           | _ => .error $ .ifConditionNotBool test_ast
+      | .eq args => do
+        let args_tyasts ← args.mapM (expTyInference · context)
+        match args_tyasts with
+          | [] | [_] => .error $ .eqArgsLess2 args_tyasts
+          | first :: rest => do
+            if rest.all (·.ty == first.ty) then
+              return .eq context.tyBool args_tyasts
+            else
+              .error $ .eqTyMismatch args_tyasts
+
       | .fn_call (oper :: args) => fnCallTyInferenct oper args context
       | .fn_call [] => unreachable!
 
