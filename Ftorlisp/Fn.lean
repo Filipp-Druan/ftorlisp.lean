@@ -11,7 +11,7 @@ structure FnDef where
 deriving Repr, BEq
 
 structure Fn where
-  dec : Ty
+  ty : Ty
   definition : Option FnDef
 deriving Repr, BEq
 
