@@ -13,6 +13,7 @@ mutual
     | binOp (op : BinOp) (arg1 arg2 : UnTyASTExpr)
     | unOp (op : UnOp) (arg : UnTyASTExpr)
     | if_expr (test : UnTyASTExpr) (then_exp : UnTyASTExpr) (else_exp : UnTyASTExpr)
+    | eq (args : List UnTyASTExpr) -- (args.length ≥ 2)
     | fn_call (list : List UnTyASTExpr)
   deriving Nonempty, Repr, BEq
 
