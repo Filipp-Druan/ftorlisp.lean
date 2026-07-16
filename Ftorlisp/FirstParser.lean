@@ -14,24 +14,8 @@ inductive FirstParserError where
   | list
 deriving Inhabited, Repr
 
-def combineToFloat (whole : Int) (frac : Nat) : Float :=
-  -- Определяем количество цифр в дробной части
-  let len := (toString frac).length
-  -- Возводим 10 в степень количества цифр
-  let divisor := (10 : Nat) ^ len
-
-  -- Переводим части в Float и делим
-  let fPart := Float.ofInt (frac : Int) / Float.ofInt (divisor : Int)
-
-  -- Если целая часть отрицательная, дробную нужно вычитать
-  if whole < 0 then
-    Float.ofInt whole - fPart
-  else
-    Float.ofInt whole + fPart
-
--- Пример использования:
-#eval combineToFloat 24 256   -- Результат: 2.250000
-#eval combineToFloat (-2) 25 -- Результат: -2.250000
+private def fractionalPart (digits : Array Nat) : Float :=
+  digits.foldr (fun d acc => (Float.ofNat d + acc) / 10.0) 0.0
 
 private def numberParser : Parser FirstParserError ParseTree := do
   let minus ← maybe (char '-')
@@ -44,8 +28,10 @@ private def numberParser : Parser FirstParserError ParseTree := do
 
   match dot with
     | .some _ => do
-      let num_end ← wholeNumber
-      return .number $ combineToFloat int_part num_end
+      let num_end ← many digit
+      let frac := fractionalPart num_end
+
+      return .number $ Float.ofInt num + frac
     | .none => return .number $ Float.ofInt int_part
 
 
