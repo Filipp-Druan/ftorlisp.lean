@@ -20,6 +20,7 @@ mutual
   inductive TyASTStmt where
     | let_stmt (ty : Ty) (name : String) (val : TyASTExpr)
     | dec (ty : Ty) (name : String)
+    | def_stmt (ty : Ty) (name : String) (arg_names : List String) (body : List TyAST)
   deriving BEq
 
   inductive TyAST where
@@ -90,7 +91,6 @@ mutual
       let argsStrs := list.map (fun e => exprToString e indNext)
       let body := String.intercalate s!"\n{spaces indNext}" argsStrs
       s!"({body}) : {Ty.tyToString ty}"
-    end
 
   -- Обработка утверждений (statements)
   partial def stmtToString (ast : TyASTStmt) (ind : Nat := 0) : String :=
@@ -108,14 +108,25 @@ mutual
       | _ =>
         -- Fallback, если dec по какой-то причине имеет не функциональный тип
         s!"(dec {name} : {Ty.tyToString ty})"
+    | .def_stmt ty name arg_names body =>
+      -- Формируем список аргументов в квадратных скобках
+      let argsStr := "[" ++ String.intercalate " " arg_names ++ "]"
+      -- Стандартный отступ для тела функции — 2 пробела относительно текущего
+      let indNext := ind + 2
+      let bodyStrs := body.map (fun a => astToString a indNext)
 
+      if bodyStrs.isEmpty then
+        s!"(def {name} {argsStr}) : {Ty.tyToString ty}"
+      else
+        let bodyJoined := String.intercalate s!"\n{spaces indNext}" bodyStrs
+        s!"(def {name} {argsStr}\n{spaces indNext}{bodyJoined}) : {Ty.tyToString ty}"
 
   -- Главная функция для перевода всего узла AST
   partial def astToString (ast : TyAST) (ind : Nat := 0) : String :=
     match ast with
     | .exp e => exprToString e ind
     | .stmt s => stmtToString s ind
-
+end
 end Ftorlisp.TyASTPrinter
 
 instance : Repr TyAST where
