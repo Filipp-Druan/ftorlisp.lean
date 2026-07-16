@@ -53,7 +53,7 @@ partial def isSpecialName (name : String) : Bool :=
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
-      | .int val => .ok $ .intLit val
+      | .number val => .ok $ .number val
       | .sym name => match name with
         | "true" => .ok $ .bool true
         | "false" => .ok $ .bool false

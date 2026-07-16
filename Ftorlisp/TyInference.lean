@@ -36,7 +36,7 @@ mutual
   private partial def expTyInference
     (exp : UnTyASTExpr) (context : Context) : TyInfExcept TyASTExpr :=
     match exp with
-      | .intLit val => .ok $ .int context.tyInt val
+      | .number val => .ok $ .number context.tyNumber val
       | .bool val => .ok $ .bool context.tyBool val
       | .sym name => match (context.varTyLookup name) with
         | .some ty => .ok $ .varRead ty name
@@ -46,7 +46,7 @@ mutual
         let arg1_ast ← expTyInference arg1 context
         let arg2_ast ← expTyInference arg2 context
 
-        if arg1_ast.ty == arg2_ast.ty && arg1_ast.ty == context.tyInt then
+        if arg1_ast.ty == arg2_ast.ty && arg1_ast.ty == context.tyNumber then
           return .binOp arg1_ast.ty op arg1_ast arg2_ast
         else
           .error $ .arithArgsTypeMismatch arg1_ast arg2_ast
@@ -54,7 +54,7 @@ mutual
       | .unOp .neg arg => do
         let arg_ast ← expTyInference arg context
 
-        if arg_ast.ty == context.tyInt then
+        if arg_ast.ty == context.tyNumber then
           return (.unOp arg_ast.ty .neg arg_ast)
         else
           .error $ .negNotNum arg_ast

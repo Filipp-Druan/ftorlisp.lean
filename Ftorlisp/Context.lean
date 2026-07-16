@@ -16,7 +16,7 @@ namespace TyTable
   def init : TyTable :=
     let map : HashMap String Ty := ∅
     let full_map := map.insertMany [
-      ("Int", .int),
+      ("Number", .int),
       ("Bool", .bool)
     ]
     ⟨full_map⟩
@@ -24,14 +24,14 @@ namespace TyTable
   def lookup (ty_table : TyTable) (name : String) : Option Ty :=
     ty_table.map.get? name
 
-  def int (ty_table : TyTable) : Ty :=
-    (ty_table.lookup "Int").get!
+  def number (ty_table : TyTable) : Ty :=
+    (ty_table.lookup "Number").get!
 
   def bool (ty_table : TyTable) : Ty :=
     (ty_table.lookup "Bool").get!
 
   def isInt (ty_table : TyTable) (ty : Ty) : Bool :=
-    ty_table.int == ty
+    ty_table.number == ty
 end TyTable
 
 private structure VarTyEnv where
@@ -91,8 +91,8 @@ namespace Context
       | .none =>
         (context, false)
 
-  def tyInt (context : Context) : Ty :=
-    context.ty_table.int
+  def tyNumber (context : Context) : Ty :=
+    context.ty_table.number
 
   def tyBool (context : Context) : Ty :=
     context.ty_table.bool

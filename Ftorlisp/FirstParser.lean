@@ -9,17 +9,45 @@ open Ftorlisp.ParseTree
 namespace Ftorlisp.FirstParser
 
 inductive FirstParserError where
-  | int
+  | number
   | sym
   | list
 deriving Inhabited, Repr
 
-private def intParser : Parser FirstParserError ParseTree := do
+def combineToFloat (whole : Int) (frac : Nat) : Float :=
+  -- Определяем количество цифр в дробной части
+  let len := (toString frac).length
+  -- Возводим 10 в степень количества цифр
+  let divisor := (10 : Nat) ^ len
+
+  -- Переводим части в Float и делим
+  let fPart := Float.ofInt (frac : Int) / Float.ofInt (divisor : Int)
+
+  -- Если целая часть отрицательная, дробную нужно вычитать
+  if whole < 0 then
+    Float.ofInt whole - fPart
+  else
+    Float.ofInt whole + fPart
+
+-- Пример использования:
+#eval combineToFloat 24 256   -- Результат: 2.250000
+#eval combineToFloat (-2) 25 -- Результат: -2.250000
+
+private def numberParser : Parser FirstParserError ParseTree := do
   let minus ← maybe (char '-')
   let num ← wholeNumber
-  match minus with
-    | .some _ => return (.int (- (Int.ofNat num)))
-    | .none => return .int $ Int.ofNat num
+  let dot ← maybe $ char '.'
+
+  let int_part := match minus with
+    | .some _ => - Int.ofNat num
+    | .none => num
+
+  match dot with
+    | .some _ => do
+      let num_end ← wholeNumber
+      return .number $ combineToFloat int_part num_end
+    | .none => return .number $ Float.ofInt int_part
+
 
 private def isMathChar (ch : Char) : Bool :=
   ch ∈ ['+', '-', '*', '/', '=']
@@ -45,7 +73,7 @@ mutual
     return .call exprs.toList
 
   private partial def exprParser : Parser FirstParserError ParseTree := do
-    (withErr (.custom FirstParserError.int)  intParser) <|>
+    (withErr (.custom .number)  numberParser) <|>
     (withErr (.custom FirstParserError.sym)  symParser) <|>
     (withErr (.custom FirstParserError.list) listParser)
 end

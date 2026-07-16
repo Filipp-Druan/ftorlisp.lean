@@ -7,7 +7,7 @@ open Ftorlisp.Ty
 namespace Ftorlisp.TyAST
 mutual
   inductive TyASTExpr where
-    | int (ty : Ty) (val : Int)
+    | number (ty : Ty) (val : Float)
     | bool (ty : Ty) (val : Bool)
     | binOp (ty : Ty) (op : BinOp) (arg1 arg2 : TyASTExpr)
     | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
@@ -32,7 +32,7 @@ end
 namespace TyASTExpr
   def ty (ast: TyASTExpr) : Ty :=
     match ast with
-      | .int ty _ => ty
+      | .number ty _ => ty
       | .bool ty _ => ty
       | .varRead ty _ => ty
       | .binOp ty _ _ _ => ty
@@ -53,7 +53,7 @@ mutual
   -- Обработка выражений
   partial def exprToString (ast : TyASTExpr) (ind : Nat := 0) : String :=
     match ast with
-    | .int ty val =>
+    | .number ty val =>
       s!"{val} : {Ty.tyToString ty}"
     | .bool ty val =>
       s!"{val} : {Ty.tyToString ty}"
