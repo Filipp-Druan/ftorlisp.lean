@@ -70,21 +70,21 @@ mutual
             if isSpecialName name then
               .error .notExpServis
             else
-              fnParser parse_tree
-          | .call _ => fnParser parse_tree
+              fnCallParser parse_tree
+          | .call _ => fnCallParser parse_tree
           | _ => .error $ .fnCallIncorrectOpertor parse_tree
       | .call [] => .error .emptyCall
 
   private partial def eqParser
     (args : List ParseTree) : SPExcept UnTyASTExpr := do
     let args_asts ← args.mapM exprParser
-    if h : args_asts.length < 2 then
+    if args_asts.length < 2 then
       .error $ .eqArgsLess2 args
     else
       return .eq args_asts
 
 
-  private partial def fnParser
+  private partial def fnCallParser
     (parse_tree : ParseTree) : SPExcept UnTyASTExpr := do
     match parse_tree with
       | .call list => do
