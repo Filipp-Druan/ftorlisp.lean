@@ -1,7 +1,7 @@
 namespace Ftorlisp.Ty
 
 inductive Ty where
-  | int
+  | number
   | bool
   | generic_cons (name : String) (arg_tys_num : Nat)
   | generic_spec (gen_cons : Ty) (arg_tys : List Ty)
@@ -10,7 +10,7 @@ deriving Inhabited, BEq
 
 namespace Ty
   def tyToString : Ty → String
-      | .int => "Int"
+      | .number => "Int"
       | .bool => "Bool"
       | .fn arg_tys ret_ty =>
         let argsStr := "[" ++ (String.intercalate " " (arg_tys.map tyToString)) ++ "]"

@@ -16,7 +16,7 @@ namespace TyTable
   def init : TyTable :=
     let map : HashMap String Ty := ∅
     let full_map := map.insertMany [
-      ("Number", .int),
+      ("Number", .number),
       ("Bool", .bool)
     ]
     ⟨full_map⟩
