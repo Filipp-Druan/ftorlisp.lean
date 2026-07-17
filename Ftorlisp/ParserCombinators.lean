@@ -81,12 +81,12 @@ partial def many1 (parser : Parser ε α): Parser ε (Array α) :=
     | .ok _ => many parser state
 
 instance : OrElse (Parser ε α) where
-  orElse parser_1 parser_2 :=  λ state =>
+  orElse parser_1 unit_to_parser :=  λ state =>
     let res := parser_1 state
     match res with
       | .ok val => .ok val
       | .error err =>
-        let res2 := parser_2 () state
+        let res2 := unit_to_parser () state
         match res2 with
           | .ok _ => res2
           | .error err2 =>
