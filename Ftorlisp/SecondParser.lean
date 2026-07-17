@@ -183,12 +183,12 @@ mutual
   private partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
     match args with
       | [name, val] => do
-        let name_ast ← exprParser name
+        let name_ast := nameParser name
         let val_ast ← exprParser val
 
         match name_ast with
-          | .sym name_str => .ok $ .let_stmt name_str val_ast
-          | _ => .error .letNameNotSym
+          | .ok name_str => .ok $ .let_stmt name_str val_ast
+          | .error _ => .error .letNameNotSym
 
       | _ => .error $ .letNot2Args args
 
