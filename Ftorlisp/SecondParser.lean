@@ -42,13 +42,19 @@ inductive SecondParserError where
   | decArgsNotList (args : List ParseTree)
   | decFunNameNotSym (args : List ParseTree)
   | decToMachDecArgs (args : List ParseTree)
+  | defError (args : List ParseTree)
+  | defEmptyBody (args : List ParseTree)
+  | defArgsNameNotSym (name : String) (args_names : List ParseTree)
+  | defNameNotSym (parse_tree : ParseTree)
+  | defArgsNamesNotList (parse_tree : ParseTree)
   | fnCallIncorrectOpertor (parse_tree : ParseTree)
+  | nameNotSym (parse_tree : ParseTree)
 deriving Inhabited, Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
 
 partial def isSpecialName (name : String) : Bool :=
-  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec"]
+  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec", "def"]
 
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
@@ -191,9 +197,42 @@ mutual
         match oper with
           | .sym "let" => letStmtParser args
           | .sym "dec" => decParser args
+          | .sym "def" => defParser args
           | .sym _ => .error $ .unknownOperator oper
           | _ => .error $ .operatorNotSymbol oper
       | _ => .error .notStmtServis
+
+  private partial def nameParser (parse_tree : ParseTree) : SPExcept String :=
+    match parse_tree with
+      | .sym name => .ok name
+      | _ => .error $ .nameNotSym parse_tree
+
+  private partial def defNameParser (parse_tree : ParseTree) : SPExcept String :=
+    let name := nameParser parse_tree
+    match name with
+      | .error _ => .error $ .defNameNotSym parse_tree
+      | .ok str => .ok str
+
+  private partial def defArgsNamesParser (parse_tree : ParseTree) (name : String) : SPExcept $ List String :=
+    match parse_tree with
+      | .call list =>
+        let names : SPExcept $ List String := list.mapM nameParser
+        match names with
+          | .error _ => .error $ .defArgsNameNotSym name list
+          | .ok list => .ok list
+      | _ => .error $ .defArgsNamesNotList parse_tree
+
+
+  private partial def defParser (parse_tree_list : List ParseTree) : SPExcept UnTyASTStmt := do
+    match parse_tree_list with
+      | [name] => .error $ .defError parse_tree_list
+      | [_name, _val] => .error $ .defEmptyBody parse_tree_list
+      | name :: args_names_pt :: body => do
+        let name_str ← defNameParser name
+        let args_names ← defArgsNamesParser args_names_pt name_str
+        let body_ast ← body.mapM astSecondParser
+        return .def_stmt name_str args_names body_ast
+      | _ => .error $ .defError parse_tree_list
 
   partial def astSecondParser (parse_tree : ParseTree) : SPExcept UnTyAST :=
     let exp_res := exprParser parse_tree
@@ -222,4 +261,8 @@ end
 
 #eval do
   let pt ← (exprFirstParser "(dec foo [Bool] Bool)")
+  return astSecondParser pt
+
+#eval do
+  let pt ← (exprFirstParser "(def foo [a] a)")
   return astSecondParser pt
