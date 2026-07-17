@@ -35,14 +35,13 @@ namespace TyTable
 end TyTable
 
 private structure VarTyEnv where
-  parent : Option VarTyEnv
   scope : HashMap String Ty
 deriving Repr, BEq
 
 namespace VarTyEnv
 
   def init : VarTyEnv :=
-    {parent := .none, scope := .emptyWithCapacity}
+    {scope := .emptyWithCapacity}
 
   def lookup (env : VarTyEnv) (name : String) : Option Ty :=
     env.scope.get? name
@@ -53,6 +52,7 @@ namespace VarTyEnv
 end VarTyEnv
 
 structure Context where
+  parent : Option Context
   fn_table : HashMap String Fn
   var_ty_env : VarTyEnv
   ty_table : TyTable
@@ -60,16 +60,26 @@ deriving Repr, BEq
 
 namespace Context
   def init : Context :=
-    ⟨∅, .init, .init⟩
+    ⟨.none, ∅, .init, .init⟩
 
-  def varTyLookup (context : Context) (name : String) : Option Ty :=
-    context.var_ty_env.lookup name
+  partial def varTyLookup (context : Context) (name : String) : Option Ty :=
+    match context.var_ty_env.lookup name with
+      | .some ty => .some ty
+      | .none => do
+        let par ← context.parent
+        par.varTyLookup name
 
-  def varTyInsert (context : Context) (name : String) (ty : Ty) : Context :=
-    {context with var_ty_env := context.var_ty_env.insert name ty}
+  def varTyInsert (context : Context) (name : String) (ty : Ty) : (Context × Bool) :=
+    match context.var_ty_env.lookup name with
+      | .none => ({context with var_ty_env := context.var_ty_env.insert name ty}, true)
+      | .some _ => (context, false)
 
   def tyLookup (context : Context) (name : String) : Option Ty :=
-    context.ty_table.lookup name
+    match context.ty_table.lookup name with
+      | .some ty => .some ty
+      | .none => do
+        let par ← context.parent
+        par.tyLookup name
 
   def fnInsert (context : Context) (name : String) (fn : Fn) : (Context × Bool) :=
     let isIn := name ∈ context.fn_table

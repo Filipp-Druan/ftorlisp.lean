@@ -151,6 +151,7 @@ mutual
         let second_ast ← exprParser second
         (foldBinOpArgs oper (.binOp oper first_ast second_ast) rest_rest)
       | [] => .error .foldBinOpArgsEmptyList
+
   private partial def binOpParser (oper : BinOp) (args : List ParseTree) : SPExcept UnTyASTExpr := do
     match args with
       | [] => Except.error SecondParserError.emptyCall
@@ -163,7 +164,7 @@ mutual
         let arg1_ast ← exprParser arg1
         foldBinOpArgs oper arg1_ast rest
 
-  private partial def minusParser (args : List ParseTree) : SPExcept UnTyASTExpr :=
+ private partial def minusParser (args : List ParseTree) : SPExcept UnTyASTExpr :=
     match args with
       | [] => .error .emptyCall
       | [arg] => do
@@ -175,8 +176,8 @@ mutual
         return .binOp .sub arg1_ast arg2_ast
       | arg1 :: rest => do
           let arg1_ast ← exprParser arg1
-          let rest_ast ← (binOpParser .sub rest)
-          return .binOp .sub arg1_ast rest_ast
+          foldBinOpArgs .sub arg1_ast rest
+
 
 
   private partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
@@ -252,7 +253,7 @@ mutual
 end
 
 #eval do
-  let pt ← (exprFirstParser "(let num (+ 1 2 3))")
+  let pt ← (exprFirstParser "(let num (- 1 2 3))")
   return astSecondParser pt
 
 #eval do
