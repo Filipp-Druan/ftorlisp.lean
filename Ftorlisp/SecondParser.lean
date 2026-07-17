@@ -226,7 +226,7 @@ mutual
 
   private partial def defParser (parse_tree_list : List ParseTree) : SPExcept UnTyASTStmt := do
     match parse_tree_list with
-      | [name] => .error $ .defError parse_tree_list
+      | [_name] => .error $ .defError parse_tree_list
       | [_name, _val] => .error $ .defEmptyBody parse_tree_list
       | name :: args_names_pt :: body => do
         let name_str ← defNameParser name
