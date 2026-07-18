@@ -31,7 +31,6 @@ namespace Fn
     ⟨dec_ty, .none⟩
 
   def addDef (fn : Fn) (fn_def : FnDef) : Except FnError Fn :=
-
     match fn.definition with
       | .some _ => .error .fnDefined
       | _ => .ok {fn with definition := .some fn_def}
