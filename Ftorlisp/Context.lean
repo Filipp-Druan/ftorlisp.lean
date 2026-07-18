@@ -38,6 +38,13 @@ private structure VarTyEnv where
   scope : HashMap String Ty
 deriving Repr, BEq
 
+inductive ContextError where
+  | fnNotDeclaered (name : String)
+  | fnDefined (name : String)
+deriving Repr, BEq
+
+abbrev ContextExcept := Except ContextError
+
 namespace VarTyEnv
 
   def init : VarTyEnv :=
@@ -61,6 +68,9 @@ deriving Repr, BEq
 namespace Context
   def init : Context :=
     ⟨.none, ∅, .init, .init⟩
+
+  def levelUp (context : Context) : Context :=
+    ⟨.some context, ∅, .init, .init⟩
 
   partial def varTyLookup (context : Context) (name : String) : Option Ty :=
     match context.var_ty_env.lookup name with
@@ -91,15 +101,27 @@ namespace Context
         var_ty_env := context.var_ty_env.insert name fn.ty},
        true)
 
-  def fnAddDef (context : Context) (name : String) (fn_def : FnDef) : (Context × Bool) :=
+  -- Добавить определение можно только для той функиции, которая задекларирована на том же уровне вложенности,
+  -- Что и её определение.
+  def fnAddDef (context : Context) (name : String) (fn_def : FnDef) : ContextExcept Context :=
     let opt_fn := context.fn_table[name]?
     match opt_fn with
-      | .some fn =>
-        let new_fn := fn.addDef fn_def
+      | .some fn => do
+        let new_fn ← fn.addDef fn_def |> .mapError (fun _ => .fnDefined name)
         let new_context := {context with fn_table := context.fn_table.insert name new_fn}
-        (new_context, true)
+        .ok new_context
       | .none =>
-        (context, false)
+        .error $ .fnNotDeclaered name
+
+  -- А вот искать объявление и определение функций мы можем и в родительских уронях вложенности.
+  partial def fnLookup (context : Context) (name : String) : Option Fn :=
+    match context.fn_table.get? name with
+      | .some fn => fn
+      | .none =>
+        match context.parent with
+          | .some par => par.fnLookup name
+          | .none => .none
+
 
   def tyNumber (context : Context) : Ty :=
     context.ty_table.number
