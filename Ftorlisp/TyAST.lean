@@ -20,7 +20,8 @@ mutual
   inductive TyASTStmt where
     | let_stmt (ty : Ty) (name : String) (val : TyASTExpr)
     | dec (ty : Ty) (name : String)
-    | def_stmt (ty : Ty) (name : String) (arg_names : List String) (body : List TyAST)
+    | def_stmt (ty : Ty)
+      (name : String) (arg_names : List String) (body : List TyAST)
   deriving BEq
 
   inductive TyAST where

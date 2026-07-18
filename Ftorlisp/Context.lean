@@ -74,7 +74,7 @@ namespace Context
       | .none => ({context with var_ty_env := context.var_ty_env.insert name ty}, true)
       | .some _ => (context, false)
 
-  def tyLookup (context : Context) (name : String) : Option Ty :=
+  partial def tyLookup (context : Context) (name : String) : Option Ty :=
     match context.ty_table.lookup name with
       | .some ty => .some ty
       | .none => do

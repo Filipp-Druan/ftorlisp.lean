@@ -10,7 +10,7 @@ deriving Inhabited, BEq
 
 namespace Ty
   def tyToString : Ty → String
-      | .number => "Int"
+      | .number => "Number"
       | .bool => "Bool"
       | .fn arg_tys ret_ty =>
         let argsStr := "[" ++ (String.intercalate " " (arg_tys.map tyToString)) ++ "]"
