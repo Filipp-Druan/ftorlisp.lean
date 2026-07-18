@@ -217,7 +217,7 @@ mutual
                 else
                   let (rest_tyast, rest_context) ← (blockTyInference rest new_context)
                   return (tyast :: rest_tyast, rest_context)
-              | .def_stmt ty name arg_names body => do
+              | .def_stmt _ty name _arg_names _body => do
                 let new_context := context.fnAddDef name ⟨stmt⟩
                 match new_context with
                   | .error _ => .error $ .defStmtFnDefined name
