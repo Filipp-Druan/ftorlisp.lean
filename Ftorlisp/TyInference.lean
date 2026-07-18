@@ -22,12 +22,18 @@ inductive TyInfError where
   | eqArgsLess2 (args :  List TyASTExpr)
   | eqTyMismatch (args :  List TyASTExpr)
   | unknownTy (unty_ast : UnTyASTTy)
+  | varDefined (name : String)
   | genericArgsNumMismatch (unty_ast : UnTyASTTy) (correct_num : Nat)
   | genericFirstNotCons (unty_ast : UnTyASTTy)
   | decAlreadyDeclared (ty_ast : TyAST)
   | fnTyMismatch (oper : TyASTExpr) (args : List TyASTExpr)
   | fnOperNotFn (oper : TyASTExpr)
   | fnBadArgsNum (oper : TyASTExpr) (args : List TyASTExpr)
+  | defStmtFnDefined (name : String)
+  | defStmtFnUndeclaered (name : String)
+  | defBadArgsNum (stmt : UnTyASTStmt)
+  | defLastNotExpr (stmt : UnTyASTStmt)
+  | defRetTyMismatch (stmt : UnTyASTStmt)
 deriving Repr, BEq
 
 abbrev TyInfExcept := Except TyInfError
@@ -136,7 +142,41 @@ mutual
         let args_tys ← arg_tys_asts.mapM (tyTyInference · context)
         let ret_ty ← (tyTyInference ret_ty_ast context)
         return .dec (.fn args_tys ret_ty) name
+      | .def_stmt name args body => do
+        let dec_opt := context.fnLookup name
+        match dec_opt with
+          | .none => .error $ .defStmtFnUndeclaered name
+          | .some ⟨.fn arg_tys ret_ty, .none⟩  => do
+            let nested_context := context.levelUp
+            let correct_num := arg_tys.length
+            let actual_num := args.length
 
+            if correct_num != actual_num then
+              .error $ .defBadArgsNum stmt
+
+            let rec loop (context : Context) (names : List String) (tys : List Ty) : TyInfExcept Context :=
+              match names, tys with
+                | name :: names_rest, ty :: tys_rest => do
+                  let (new_context, is_success) := context.varTyInsert name ty
+                  if !is_success then
+                    .error $ .varDefined name
+                  loop new_context names_rest tys_rest
+                | [], [] => .ok context
+                | _, _ => .error $ .defBadArgsNum stmt
+
+            let new_context ← loop nested_context args arg_tys
+            let (typed_body, _) ← blockTyInference body new_context
+
+            let last := typed_body.getLast!
+            match last with
+              | .exp last_exp => do
+                if last_exp.ty == ret_ty then
+                  let dec := dec_opt.get!
+                  return .def_stmt dec.ty name args typed_body
+              | _ => .error $ .defLastNotExpr stmt
+
+            .error $ .defRetTyMismatch stmt
+          | _ => panic! "В декларации тип не функция"
 
   partial def astTyInference
     (ast : UnTyAST) (context : Context) : TyInfExcept TyAST := do
@@ -147,33 +187,42 @@ mutual
       | .stmt stmt => do
         let stmt_typed ← stmtTyInference stmt context
         return .stmt stmt_typed
-end
 
+  partial def blockTyInference
+    (ast_list : List UnTyAST) (context : Context) : TyInfExcept $ (List TyAST × Context) := do
+    match ast_list with
+      | [] => return ([], context)
+      | ast :: rest => do
+        let tyast ← astTyInference ast context
+        match tyast with
+          | .exp _ => do
+            let (rest_tyast, rest_context) ← (blockTyInference rest context)
 
-partial def programTyInference
-  (ast_list : List UnTyAST) (context : Context) : TyInfExcept $ (List TyAST × Context) := do
-  match ast_list with
-    | [] => return ([], context)
-    | ast :: rest => do
-      let tyast ← astTyInference ast context
-      match tyast with
-        | .exp _ => do
-          let (rest_tyast, rest_context) ← (programTyInference rest context)
+            return (tyast :: rest_tyast, rest_context)
+          | .stmt stmt => do
+            match stmt with
+              | .let_stmt ty name _ => do
+                let (new_context, is_success) := context.varTyInsert name ty
+                if !is_success then
+                  .error $ .varDefined name
 
-          return (tyast :: rest_tyast, rest_context)
-        | .stmt stmt => do
-          match stmt with
-            | .let_stmt ty name _ => do
-              let new_context := context.varTyInsert name ty
+                let (rest_tyast, rest_context) ← (blockTyInference rest new_context)
 
-              let (rest_tyast, rest_context) ← (programTyInference rest new_context)
-
-              return (tyast :: rest_tyast, rest_context)
-            | .dec ty name => do
-              let fn := Fn.Fn.makeFromDecTy ty
-              let (new_context, success) := context.fnInsert name fn
-              if !success then
-                .error $ .decAlreadyDeclared tyast
-              else
-                let (rest_tyast, rest_context) ← (programTyInference rest new_context)
                 return (tyast :: rest_tyast, rest_context)
+              | .dec ty name => do
+                let fn := Fn.Fn.makeFromDecTy ty
+                let (new_context, is_success) := context.fnInsert name fn
+                if !is_success then
+                  .error $ .decAlreadyDeclared tyast
+                else
+                  let (rest_tyast, rest_context) ← (blockTyInference rest new_context)
+                  return (tyast :: rest_tyast, rest_context)
+              | .def_stmt ty name arg_names body => do
+                let new_context := context.fnAddDef name ⟨stmt⟩
+                match new_context with
+                  | .error _ => .error $ .defStmtFnDefined name
+                  | .ok new_context_ok => do
+                    let (rest_tyast, rest_context) ← (blockTyInference rest new_context_ok)
+                    return (tyast :: rest_tyast, rest_context)
+
+end

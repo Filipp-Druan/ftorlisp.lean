@@ -22,12 +22,12 @@ mutual
     | dec (ty : Ty) (name : String)
     | def_stmt (ty : Ty)
       (name : String) (arg_names : List String) (body : List TyAST)
-  deriving BEq
+  deriving Inhabited, BEq
 
   inductive TyAST where
     | exp (val : TyASTExpr)
     | stmt (val : TyASTStmt)
-  deriving BEq
+  deriving Inhabited, BEq
 
 end
 
