@@ -20,7 +20,7 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 
   let pt ← programFirstParser src |> Except.mapError GeneralError.firstParserError
   let utast ← programSecondParser pt |> Except.mapError GeneralError.secondParserError
-  let tyast ← programTyInference utast context |> Except.mapError GeneralError.tyInfError
+  let tyast ← blockTyInference utast context |> Except.mapError GeneralError.tyInfError
 
   return tyast
 
@@ -28,3 +28,11 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 #eval srcToTyAST "(let num 5) (if (= num 5) (* num num) 0)" .init
 #eval srcToTyAST "(dec foo [Number] Number) (foo 5)" .init
 #eval srcToTyAST "(dec foo [Number] Number) (foo 5 5)" .init -- Ошибка - неправильное количество аргументов
+#eval srcToTyAST "(dec and [Bool Bool] Bool)
+(def and [a b] (= a b true))
+(and true false)" .init
+
+#eval srcToTyAST
+"(dec and [Bool Bool] Bool)
+(def and [a b] (= a b true))
+(and true 5)" .init -- Ошибка несовпадение типов.
