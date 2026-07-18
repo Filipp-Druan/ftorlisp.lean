@@ -72,6 +72,7 @@ partial def exprFirstParser (src : String) : Except FirstParserError ParseTree :
     | .ok parser_res => .ok parser_res.val
 
 partial def programParser : Parser FirstParserError (List ParseTree) := do
+  let _ ← maybe $ many ws
   let arr ← sepBy exprParser (many ws)
   return arr.toList
 
