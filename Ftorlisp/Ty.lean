@@ -20,7 +20,7 @@ namespace Ty
       | .generic_cons name _ => name
       | .generic_spec cons arg_tys =>
         let argsStr := (String.intercalate " " (arg_tys.map tyToString))
-        "(" ++ (tyToString cons) ++ argsStr ++ ")"
+        "(" ++ (tyToString cons) ++ " " ++ argsStr ++ ")"
 
   instance : ToString Ty where
     toString := tyToString
