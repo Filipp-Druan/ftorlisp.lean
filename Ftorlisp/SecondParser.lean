@@ -49,12 +49,21 @@ inductive SecondParserError where
   | defArgsNamesNotList (parse_tree : ParseTree)
   | fnCallIncorrectOpertor (parse_tree : ParseTree)
   | nameNotSym (parse_tree : ParseTree)
+  | matchBranchBadFormat
+  | matchEmpty
+  | patternBadFormat
+  | dataConsBadFormat
+  | dataNameNotSym
+  | firstNot1Arg (args : List ParseTree)
+  | restNot1Arg (args : List ParseTree)
+  | consNot2Args (args : List ParseTree)
+
 deriving Inhabited, Nonempty, Repr, BEq
 
 abbrev SPExcept := Except SecondParserError
 
 partial def isSpecialName (name : String) : Bool :=
-  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec", "def"]
+  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec", "def", "first", "rest", "cons"]
 
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
@@ -77,6 +86,10 @@ mutual
           | .sym "/" => binOpParser .div args
           | .sym "if" => ifParser args
           | .sym "=" => eqParser args
+          | .sym "match" => matchParser args
+          | .sym "first" => firstParser args
+          | .sym "rest" => restParser args
+          | .sym "cons" => consParser args
           | .sym name =>
             if isSpecialName name then
               .error .notExpServis
@@ -85,6 +98,29 @@ mutual
           | .call _ => fnCallParser parse_tree
           | _ => .error $ .fnCallIncorrectOpertor parse_tree
       | .call [] => .error .emptyCall
+
+  -- Парсеры для новых операций
+  private partial def firstParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | [list_tree] =>
+        let list_ast ← exprParser list_tree
+        return .first list_ast
+      | _ => .error $ .firstNot1Arg args
+
+  private partial def restParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | [list_tree] =>
+        let list_ast ← exprParser list_tree
+        return .rest list_ast
+      | _ => .error $ .restNot1Arg args
+
+  private partial def consParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | [item_tree, list_tree] =>
+        let item_ast ← exprParser item_tree
+        let list_ast ← exprParser list_tree
+        return .cons item_ast list_ast
+      | _ => .error $ .consNot2Args args
 
   private partial def eqParser
     (args : List ParseTree) : SPExcept UnTyASTExpr := do
@@ -183,7 +219,43 @@ mutual
           let arg1_ast ← exprParser arg1
           foldBinOpArgs .sub arg1_ast rest
 
+  -- Парсер отдельного паттерна
+  private partial def patternParser (pt : ParseTree) : SPExcept UnTyASTPattern :=
+    match pt with
+      | .sym "_" => .ok .wildcard
+      | .call (.sym cons_name :: args) => do
+         let arg_names ← args.mapM nameParser
+         return .cons cons_name arg_names
+      | .sym cons_name => .ok (.cons cons_name [])
+      | _ => .error .patternBadFormat
 
+  -- Ветка для парсинга (match target [pattern body] ...)
+  private partial def matchParser (args : List ParseTree) : SPExcept UnTyASTExpr := do
+    match args with
+      | target_tree :: branches_trees => do
+        let target_ast ← exprParser target_tree
+        let branches ← branches_trees.mapM fun branch_tree =>
+          match branch_tree with
+            | .call [pat_tree, body_tree] => do
+               let pat_ast ← patternParser pat_tree
+               let body_ast ← exprParser body_tree
+               return (pat_ast, body_ast)
+            | _ => .error .matchBranchBadFormat
+        return .match_exp target_ast branches
+      | _ => .error .matchEmpty
+
+  -- Ветка для парсинга (data Name (cons1 Type) (cons2 Type) ...)[cite: 10]
+  private partial def dataParser (args : List ParseTree) : SPExcept UnTyASTStmt := do
+    match args with
+      | .sym name :: cons_trees => do
+        let constructors ← cons_trees.mapM fun cons_tree =>
+          match cons_tree with
+            | .call (.sym cons_name :: cons_args) => do
+              let arg_tys ← cons_args.mapM tyParser
+              return (cons_name, arg_tys)
+            | _ => .error .dataConsBadFormat
+        return .data_decl name constructors
+      | _ => .error .dataNameNotSym
 
   private partial def letStmtParser (args : List ParseTree) : SPExcept UnTyASTStmt :=
     match args with
@@ -204,6 +276,7 @@ mutual
           | .sym "let" => letStmtParser args
           | .sym "dec" => decParser args
           | .sym "def" => defParser args
+          | .sym "data" => dataParser args
           | .sym _ => .error $ .unknownOperator oper
           | _ => .error $ .operatorNotSymbol oper
       | _ => .error .notStmtServis

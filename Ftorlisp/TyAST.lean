@@ -17,6 +17,10 @@ mutual
     | if_expr (ty : Ty) (test : TyASTExpr) (then_exp : TyASTExpr) (else_exp : TyASTExpr)
     | eq (ty : Ty) (args : List TyASTExpr)
     | fn_expr (ty : Ty) (list : List TyASTExpr)
+    | match_exp (ty : Ty) (target : TyASTExpr) (branches : List (TyASTPattern × TyASTExpr))
+    | first (ty : Ty) (list : TyASTExpr)
+    | rest (ty : Ty) (list : TyASTExpr)
+    | cons (ty : Ty) (item : TyASTExpr) (list : TyASTExpr)
   deriving Inhabited, BEq
 
   inductive TyASTStmt where
@@ -24,12 +28,18 @@ mutual
     | dec (ty : Ty) (name : String)
     | def_stmt (ty : Ty)
       (name : String) (arg_names : List String) (body : List TyAST)
+    | data_decl (ty : Ty) (name : String) (constructors : List (String × List Ty))
   deriving Inhabited, BEq
 
   inductive TyAST where
     | exp (val : TyASTExpr)
     | stmt (val : TyASTStmt)
   deriving Inhabited, BEq
+
+  inductive TyASTPattern where
+  | cons (ty : Ty) (name : String) (args : List (String × Ty))
+  | wildcard (ty : Ty)
+deriving Inhabited, BEq
 
 end
 
@@ -46,6 +56,10 @@ namespace TyASTExpr
       | .eq ty _ => ty
       | .if_expr ty _ _ _ => ty
       | .fn_expr ty _ => ty
+      | .match_exp ty _ _ => ty
+      | .first ty _ => ty
+      | .rest ty _ => ty
+      | .cons ty _ _ => ty
 
 end TyASTExpr
 
@@ -102,6 +116,16 @@ mutual
       let argsStrs := list.map (fun e => exprToString e indNext)
       let body := String.intercalate s!"\n{spaces indNext}" argsStrs
       s!"({body}) : {Ty.tyToString ty}"
+    | .match_exp ty target patterns => "(match not implemented printing)"
+    | .first ty list =>
+      let indNext := ind + 7
+      s!"(first {exprToString list indNext}) : {Ty.tyToString ty}"
+    | .rest ty list =>
+      let indNext := ind + 6
+      s!"(rest {exprToString list indNext}) : {Ty.tyToString ty}"
+    | .cons ty item list =>
+      let indNext := ind + 6
+      s!"(cons {exprToString item indNext}\n{spaces indNext}{exprToString list indNext}) : {Ty.tyToString ty}"
 
   -- Обработка утверждений (statements)
   partial def stmtToString (ast : TyASTStmt) (ind : Nat := 0) : String :=
@@ -131,6 +155,7 @@ mutual
       else
         let bodyJoined := String.intercalate s!"\n{spaces indNext}" bodyStrs
         s!"(def {name} {argsStr}\n{spaces indNext}{bodyJoined}) : {Ty.tyToString ty}"
+    | .data_decl _ _ _=> "ty decl not implemented print"
 
   -- Главная функция для перевода всего узла AST
   partial def astToString (ast : TyAST) (ind : Nat := 0) : String :=

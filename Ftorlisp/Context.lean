@@ -23,6 +23,9 @@ namespace TyTable
     ]
     ⟨full_map⟩
 
+  def insert (ty_table : TyTable) (name : String) (ty : Ty) : TyTable :=
+    ⟨ty_table.map.insert name ty⟩
+
   def lookup (ty_table : TyTable) (name : String) : Option Ty :=
     ty_table.map.get? name
 
@@ -92,6 +95,9 @@ namespace Context
       | .none => do
         let par ← context.parent
         par.tyLookup name
+
+  def tyInsert (context : Context) (name : String) (ty : Ty) : Context :=
+    { context with ty_table := context.ty_table.insert name ty }
 
   def fnInsert (context : Context) (name : String) (fn : Fn) : (Context × Bool) :=
     let isIn := name ∈ context.fn_table

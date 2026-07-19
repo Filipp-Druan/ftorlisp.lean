@@ -7,6 +7,7 @@ inductive Ty where
   | generic_cons (name : String) (arg_tys_num : Nat)
   | generic_spec (gen_cons : Ty) (arg_tys : List Ty)
   | fn (arg_tys : List Ty) (ret_ty : Ty)
+  | custom (name : String)
 deriving Inhabited, BEq
 
 namespace Ty
@@ -14,6 +15,7 @@ namespace Ty
       | .number => "Number"
       | .string => "String"
       | .bool => "Bool"
+      | .custom name => name
       | .fn arg_tys ret_ty =>
         let argsStr := "[" ++ (String.intercalate " " (arg_tys.map tyToString)) ++ "]"
         "(Fn " ++ argsStr ++  "" ++ " " ++ tyToString ret_ty ++ ")"

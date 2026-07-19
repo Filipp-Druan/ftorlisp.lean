@@ -35,6 +35,17 @@ inductive TyInfError where
   | defLastNotExpr (stmt : UnTyASTStmt)
   | defRetTyMismatch (stmt : UnTyASTStmt)
   | listTyMismatch (expr : UnTyASTExpr)
+  -- Новые ошибки для match
+  | matchEmptyBranches
+  | matchBranchTyMismatch (expected : Ty) (actual : Ty)
+  | matchUnknownCons (name : String)
+  | matchConsNotFn (name : String)
+  | matchConsTyMismatch (cons_name : String) (expected_ty : Ty)
+  | matchConsArgsNumMismatch (cons_name : String)
+  | firstNotList (ty : Ty)
+  | restNotList (ty : Ty)
+  | consNotList (ty : Ty)
+  | consTypeMismatch (item_ty : Ty) (list_ty : Ty)
 deriving Repr, BEq
 
 abbrev TyInfExcept := Except TyInfError
@@ -99,7 +110,98 @@ mutual
 
       | .fn_call (oper :: args) => fnCallTyInferenct oper args context
       | .fn_call [] => unreachable!
+      -- ...
+      | .match_exp target branches => do
+        let target_ast ← expTyInference target context
 
+        if branches.isEmpty then
+          .error .matchEmptyBranches
+        else
+          -- Функция для обработки одной ветки
+          let inferBranch (branch : UnTyASTPattern × UnTyASTExpr) (expected_ret_ty_opt : Option Ty) : TyInfExcept (TyASTPattern × TyASTExpr) := do
+            -- Обязательно делаем levelUp, чтобы изолировать переменные ветки!
+            let (pat_ast, branch_ctx) ← patternTyInference branch.1 target_ast.ty (context.levelUp)
+            let body_ast ← expTyInference branch.2 branch_ctx
+
+            match expected_ret_ty_opt with
+              | .some expected_ret_ty =>
+                if body_ast.ty == expected_ret_ty then
+                  return (pat_ast, body_ast)
+                else
+                  .error $ .matchBranchTyMismatch expected_ret_ty body_ast.ty
+              | .none => return (pat_ast, body_ast)
+
+          -- Тип первой ветки диктует тип всего выражения
+          let first_branch_ast ← inferBranch branches.head! none
+          let ret_ty := first_branch_ast.2.ty
+
+          -- Проверяем остальные ветки
+          let rest_branches_asts ← branches.tail!.mapM (inferBranch · (some ret_ty))
+
+          return .match_exp ret_ty target_ast (first_branch_ast :: rest_branches_asts)
+      | .first list => do
+        let list_ast ← expTyInference list context
+        match getListElemTy list_ast.ty with
+          | .some elem_ty => return .first elem_ty list_ast
+          | .none => .error $ .firstNotList list_ast.ty
+
+      | .rest list => do
+        let list_ast ← expTyInference list context
+        match getListElemTy list_ast.ty with
+          | .some _ => return .rest list_ast.ty list_ast
+          | .none => .error $ .restNotList list_ast.ty
+
+      | .cons item list => do
+        let item_ast ← expTyInference item context
+        let list_ast ← expTyInference list context
+        match getListElemTy list_ast.ty with
+          | .some elem_ty =>
+            if item_ast.ty == elem_ty then
+              return .cons list_ast.ty item_ast list_ast
+            else
+              .error $ .consTypeMismatch item_ast.ty list_ast.ty
+          | .none => .error $ .consNotList list_ast.ty
+      -- ...
+  partial def getListElemTy (ty : Ty) : Option Ty :=
+    match ty with
+    | .generic_spec (.generic_cons "List" 1) [elem_ty] => .some elem_ty
+    | _ => .none
+
+  private partial def patternTyInference
+    (pat : UnTyASTPattern)
+    (expected_ty : Ty)
+    (context : Context) : TyInfExcept (TyASTPattern × Context) := do
+    match pat with
+      | .wildcard => return (.wildcard expected_ty, context)
+      | .cons name arg_names => do
+        let cons_fn_opt := context.fnLookup name
+        match cons_fn_opt with
+          | .some cons_fn =>
+            match cons_fn.ty with
+              | .fn arg_tys ret_ty =>
+                -- Проверяем, что конструктор действительно от того типа, который мы матчим
+                if ret_ty == expected_ty then
+                  if arg_names.length == arg_tys.length then
+                    -- Рекурсивно добавляем переменные из паттерна в контекст
+                    let rec loop (ctx : Context) (names : List String) (tys : List Ty) (acc : List (String × Ty)) : TyInfExcept (Context × List (String × Ty)) :=
+                      match names, tys with
+                        | n :: ns, t :: ts => do
+                          let (new_ctx, is_success) := ctx.varTyInsert n t
+                          if !is_success then
+                            .error $ .varDefined n
+                          else
+                            loop new_ctx ns ts (acc ++ [(n, t)])
+                        | [], [] => .ok (ctx, acc)
+                        | _, _ => .error $ .matchConsArgsNumMismatch name
+
+                    let (new_context, bound_args) ← loop context arg_names arg_tys []
+                    return (.cons expected_ty name bound_args, new_context)
+                  else
+                    .error $ .matchConsArgsNumMismatch name
+                else
+                  .error $ .matchConsTyMismatch name expected_ty
+              | _ => .error $ .matchConsNotFn name
+          | .none => .error $ .matchUnknownCons name
 
   private partial def fnCallTyInferenct
     (oper : UnTyASTExpr)
@@ -187,6 +289,14 @@ mutual
 
             .error $ .defRetTyMismatch stmt
           | _ => panic! "В декларации тип не функция"
+      | .data_decl name constructors => do
+        let ty := Ty.custom name
+        let typed_constructors ← constructors.mapM (fun (cons_name, arg_tys_asts) => do
+          let arg_tys ← arg_tys_asts.mapM (tyTyInference · context)
+          return (cons_name, arg_tys)
+        )
+        return .data_decl ty name typed_constructors
+      -- ...
 
   partial def astTyInference
     (ast : UnTyAST) (context : Context) : TyInfExcept TyAST := do
@@ -234,5 +344,31 @@ mutual
                   | .ok new_context_ok => do
                     let (rest_tyast, rest_context) ← (blockTyInference rest new_context_ok)
                     return (tyast :: rest_tyast, rest_context)
+              -- ...
+              | .data_decl ty name constructors => do
+                -- 1. Добавляем новый тип в контекст
+                let ctx_with_ty := context.tyInsert name ty
+
+                -- 2. Вспомогательная функция для добавления конструкторов
+                let rec insertCons (ctx : Context) (cons_list : List (String × List Ty)) : TyInfExcept Context :=
+                  match cons_list with
+                  | [] => .ok ctx
+                  | (cons_name, arg_tys) :: rest_cons => do
+                    -- Конструктор — это функция, возвращающая наш новый тип
+                    let cons_ty := .fn arg_tys ty
+                    let fn := Fn.Fn.makeFromDecTy cons_ty
+                    let (new_ctx, is_success) := ctx.fnInsert cons_name fn
+
+                    if !is_success then
+                      .error $ .decAlreadyDeclared tyast -- Можно переиспользовать эту ошибку
+                    else
+                      insertCons new_ctx rest_cons
+
+                let new_context ← insertCons ctx_with_ty constructors
+
+                -- 3. Продолжаем проверку остального блока с обновленным контекстом
+                let (rest_tyast, rest_context) ← (blockTyInference rest new_context)
+                return (tyast :: rest_tyast, rest_context)
+              -- ...
 
 end
