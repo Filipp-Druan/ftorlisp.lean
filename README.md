@@ -3,6 +3,16 @@
 
 Описание языка находится в spec.org
 
-Язык пока в разработке. Он не запускается.
+ОНО ЗАПУСКАЕТСЯ!!!
+```bash
+lake build
 
-Сейчас в Main.lean работают небольшие тесты, в которых проверяются типы программы.
+./.lake/build/bin/ftorlisp ./examples/main.ftl \                                                ✔ 
+  --stdlib ./Stdlib/stdlib.ftl \
+  --module main \
+  -o main.erl
+
+erlc ./stdlib.erl ./main.erl
+
+erl -pa ./ -eval "c:c(stdlib), c:c(main), main:main()" -noshell -s init stop 
+```
