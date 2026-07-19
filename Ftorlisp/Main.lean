@@ -36,3 +36,10 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 "(dec and [Bool Bool] Bool)
 (def and [a b] (= a b true))
 (and true 5)" .init -- Ошибка несовпадение типов.
+
+#eval srcToTyAST
+"
+(dec fact [Number] Number)
+(dec foo [Bool] Number)
+(def fact [num]
+  (if (= num 0) 1 (fact (- num 1))))" .init

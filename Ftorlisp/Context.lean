@@ -17,7 +17,8 @@ namespace TyTable
     let map : HashMap String Ty := ∅
     let full_map := map.insertMany [
       ("Number", .number),
-      ("Bool", .bool)
+      ("Bool", .bool),
+      ("String", .string)
     ]
     ⟨full_map⟩
 
@@ -128,4 +129,7 @@ namespace Context
 
   def tyBool (context : Context) : Ty :=
     context.ty_table.bool
+
+  def tyString (context : Context) : Ty :=
+    (context.ty_table.lookup "String").get!
 end Context
