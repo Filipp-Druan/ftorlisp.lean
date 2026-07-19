@@ -13,7 +13,7 @@ open Ftorlisp.Context
 namespace Ftorlisp.TyInference
 
 inductive TyInfError where
-  | undefinedVar
+  | undefinedVar (name : String)
   | arithArgsTypeMismatch (arg1 arg2 : TyASTExpr)
   | arithNoArgs
   | negNotNum (arg : TyASTExpr)
@@ -67,7 +67,7 @@ mutual
 
       | .sym name => match (context.varTyLookup name) with
         | .some ty => .ok $ .varRead ty name
-        | .none => .error .undefinedVar
+        | .none => .error $ .undefinedVar name
 
       | .binOp op arg1 arg2 => do
         let arg1_ast ← expTyInference arg1 context
