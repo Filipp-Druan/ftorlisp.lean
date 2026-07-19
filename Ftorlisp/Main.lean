@@ -46,3 +46,22 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 
 #eval srcToTyAST "(dec foo [(List Bool)] Bool)
 (foo 'Bool[true false])" .init
+
+
+#eval srcToTyAST "
+(dec println [String] String)
+(data Command
+  (send String)
+  (help)
+  (quit))
+
+  (let command (send \"Привет!\"))
+
+  (match command
+   [(send message)
+     (println message)]
+    [(help)
+     (println \"? - help ! - quit\")]
+    [(quit)
+     (println \"Good luck!\")])
+" .init
