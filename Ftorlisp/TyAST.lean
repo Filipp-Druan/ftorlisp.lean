@@ -9,6 +9,8 @@ mutual
   inductive TyASTExpr where
     | number (ty : Ty) (val : Float)
     | bool (ty : Ty) (val : Bool)
+    | string (ty : Ty) (val : String)
+    | list (ty : Ty) (list : List TyASTExpr)
     | binOp (ty : Ty) (op : BinOp) (arg1 arg2 : TyASTExpr)
     | unOp (ty : Ty) (op : UnOp) (arg : TyASTExpr)
     | varRead (ty : Ty) (name : String)
@@ -37,6 +39,8 @@ namespace TyASTExpr
       | .number ty _ => ty
       | .bool ty _ => ty
       | .varRead ty _ => ty
+      | .string ty _ => ty
+      | .list ty _ => ty
       | .binOp ty _ _ _ => ty
       | .unOp ty _ _ => ty
       | .eq ty _ => ty
@@ -61,6 +65,12 @@ mutual
       s!"{val} : {Ty.tyToString ty}"
     | .varRead ty name =>
       s!"{name} : {Ty.tyToString ty}"
+    | .string ty string =>
+    s!"{string} : {Ty.tyToString ty}"
+    | .list ty list => let indNext := ind + 2
+      let itemsStrs := list.map (fun e => exprToString e indNext)
+      let body := String.intercalate s!"\n{spaces indNext}" itemsStrs
+      s!"'[{body}] : {Ty.tyToString ty}"
     | .unOp ty op arg =>
       let opS := match op with | .neg => "-"
       -- Длина префикса: "(" + "op" + " " (например, "(- " это 3 символа)
