@@ -34,6 +34,7 @@ inductive TyInfError where
   | defBadArgsNum (stmt : UnTyASTStmt)
   | defLastNotExpr (stmt : UnTyASTStmt)
   | defRetTyMismatch (stmt : UnTyASTStmt)
+  | listTyMismatch (expr : UnTyASTExpr)
 deriving Repr, BEq
 
 abbrev TyInfExcept := Except TyInfError
@@ -44,6 +45,15 @@ mutual
     match exp with
       | .number val => .ok $ .number context.tyNumber val
       | .bool val => .ok $ .bool context.tyBool val
+      | .string val => .ok $ .string context.tyString val
+      | .list ty_ast list => do
+        let ty ← tyTyInference ty_ast context
+        let list_asts ← list.mapM (expTyInference · context)
+        if list_asts.all (·.ty == ty) then
+          return .list (context.tyListMake ty) list_asts
+        else
+          .error $ .listTyMismatch exp
+
       | .sym name => match (context.varTyLookup name) with
         | .some ty => .ok $ .varRead ty name
         | .none => .error .undefinedVar

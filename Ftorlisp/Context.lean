@@ -18,7 +18,8 @@ namespace TyTable
     let full_map := map.insertMany [
       ("Number", .number),
       ("Bool", .bool),
-      ("String", .string)
+      ("String", .string),
+      ("List", .generic_cons "List" 1)
     ]
     ⟨full_map⟩
 
@@ -132,4 +133,7 @@ namespace Context
 
   def tyString (context : Context) : Ty :=
     (context.ty_table.lookup "String").get!
+  def tyListMake (context : Context) (ty : Ty) : Ty :=
+    let cons := (context.ty_table.lookup "List").get!
+    .generic_spec cons [ty]
 end Context
