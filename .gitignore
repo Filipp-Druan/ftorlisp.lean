@@ -3,3 +3,4 @@ Euclid.lean
 Foo.lean
 .#spec.org
 *.beam
+*.dump
