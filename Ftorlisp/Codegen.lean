@@ -15,40 +15,40 @@ namespace Ftorlisp.Codegen
 -- ==========================================================================
 
 def externTable : List (String × String) := [
-  ("print",          "ftorlisp_stdlib:print"),
-  ("println",        "ftorlisp_stdlib:println"),
-  ("print_num",      "ftorlisp_stdlib:print_num"),
-  ("println_num",    "ftorlisp_stdlib:println_num"),
+  ("print",          "stdlib:print"),
+  ("println",        "stdlib:println"),
+  ("print_num",      "stdlib:print_num"),
+  ("println_num",    "stdlib:println_num"),
 
-  ("lt",  "ftorlisp_stdlib:lt"),
-  ("gt",  "ftorlisp_stdlib:gt"),
-  ("lte", "ftorlisp_stdlib:lte"),
-  ("gte", "ftorlisp_stdlib:gte"),
-  ("neq", "ftorlisp_stdlib:neq"),
+  ("lt",  "stdlib:lt"),
+  ("gt",  "stdlib:gt"),
+  ("lte", "stdlib:lte"),
+  ("gte", "stdlib:gte"),
+  ("neq", "stdlib:neq"),
 
-  ("ft_mod",  "ftorlisp_stdlib:ft_mod"),
-  ("ft_abs",  "ftorlisp_stdlib:ft_abs"),
-  ("ft_min",  "ftorlisp_stdlib:ft_min"),
-  ("ft_max",  "ftorlisp_stdlib:ft_max"),
-  ("ft_pow",  "ftorlisp_stdlib:ft_pow"),
-  ("ft_sqrt", "ftorlisp_stdlib:ft_sqrt"),
+  ("ft_mod",  "stdlib:ft_mod"),
+  ("ft_abs",  "stdlib:ft_abs"),
+  ("ft_min",  "stdlib:ft_min"),
+  ("ft_max",  "stdlib:ft_max"),
+  ("ft_pow",  "stdlib:ft_pow"),
+  ("ft_sqrt", "stdlib:ft_sqrt"),
 
-  ("str_concat",   "ftorlisp_stdlib:str_concat"),
-  ("str_len",      "ftorlisp_stdlib:str_len"),
-  ("str_upper",    "ftorlisp_stdlib:str_upper"),
-  ("str_lower",    "ftorlisp_stdlib:str_lower"),
-  ("str_trim",     "ftorlisp_stdlib:str_trim"),
-  ("str_contains", "ftorlisp_stdlib:str_contains"),
+  ("str_concat",   "stdlib:str_concat"),
+  ("str_len",      "stdlib:str_len"),
+  ("str_upper",    "stdlib:str_upper"),
+  ("str_lower",    "stdlib:str_lower"),
+  ("str_trim",     "stdlib:str_trim"),
+  ("str_contains", "stdlib:str_contains"),
 
-  ("int_to_string",  "ftorlisp_stdlib:int_to_string"),
-  ("string_to_int",  "ftorlisp_stdlib:string_to_int"),
-  ("bool_to_string", "ftorlisp_stdlib:bool_to_string"),
+  ("int_to_string",  "stdlib:int_to_string"),
+  ("string_to_int",  "stdlib:string_to_int"),
+  ("bool_to_string", "stdlib:bool_to_string"),
 
-  ("length",   "ftorlisp_stdlib:ft_list_length"),
-  ("is_empty", "ftorlisp_stdlib:ft_list_is_empty"),
-  ("reverse",  "ftorlisp_stdlib:ft_list_reverse"),
-  ("append",   "ftorlisp_stdlib:ft_list_append"),
-  ("nth",      "ftorlisp_stdlib:ft_list_nth")
+  ("length",   "stdlib:ft_list_length"),
+  ("is_empty", "stdlib:ft_list_is_empty"),
+  ("reverse",  "stdlib:ft_list_reverse"),
+  ("append",   "stdlib:ft_list_append"),
+  ("nth",      "stdlib:ft_list_nth")
 ]
 
 def lookupExtern (name : String) : Option String :=
