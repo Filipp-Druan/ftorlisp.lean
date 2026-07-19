@@ -63,7 +63,7 @@ deriving Inhabited, Nonempty, Repr, BEq
 abbrev SPExcept := Except SecondParserError
 
 partial def isSpecialName (name : String) : Bool :=
-  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec", "def", "first", "rest", "cons"]
+  name ∈ ["+", "-", "*", "/", "=", "let", "if", "dec", "def",  "data", "first", "rest", "cons"]
 
 mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
