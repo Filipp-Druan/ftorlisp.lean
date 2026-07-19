@@ -43,3 +43,6 @@ partial def srcToTyAST (src : String) (context : Context) : Except GeneralError 
 (dec foo [Bool] Number)
 (def fact [num]
   (if (= num 0) 1 (fact (- num 1))))" .init
+
+#eval srcToTyAST "(dec foo [(List Bool)] Bool)
+(foo 'Bool[true false])" .init
