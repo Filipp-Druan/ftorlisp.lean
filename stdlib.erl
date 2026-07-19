@@ -20,18 +20,21 @@
     %% Списки (нативно полиморфны в Erlang, но
     %% на стороне Ftorlisp это должны быть спецформы, см. ниже)
     ft_list_length/1, ft_list_is_empty/1, ft_list_reverse/1,
-    ft_list_append/2, ft_list_nth/2
+    ft_list_append/2, ft_list_nth/2,
+
+    str_eq/2, read_line/0, str_split_once/2,
+    str_list_take/2, str_list_remove/2, str_list_contains/2
 ]).
 
 %% ==================== IO ====================
 %% Возвращаем то же значение, что напечатали — юнита у нас нет.
 
 print(Str) ->
-    io:format("~s", [Str]),
+    io:format("~ts", [Str]),
     Str.
 
 println(Str) ->
-    io:format("~s~n", [Str]),
+    io:format("~ts~n", [Str]),
     Str.
 
 print_num(Num) ->
@@ -108,3 +111,31 @@ ft_list_reverse(L) -> lists:reverse(L).
 ft_list_append(A, B) -> A ++ B.
 
 ft_list_nth(N, L) -> lists:nth(trunc(N) + 1, L). % 0-индексация -> 1-индексация
+
+
+str_eq(A, B) -> 
+    A =:= B.
+
+read_line() ->
+    %% Считываем строку из консоли и обрезаем перенос строки
+    case io:get_line("") of
+        eof -> "";
+        Str -> string:trim(Str, trailing, "\n")
+    end.
+
+str_split_once(Str, Sep) ->
+    %% Разделяем строку на 2 части по первому вхождению (команда + аргумент)
+    string:split(Str, Sep, leading).
+
+%% ==================== Списки строк ====================
+
+str_list_take(N, L) ->
+    %% N - float, т.к. числа во Ftorlisp это Float
+    lists:sublist(L, trunc(N)).
+
+str_list_remove(Item, L) ->
+    %% Удаляем первый встречный элемент
+    lists:delete(Item, L).
+
+str_list_contains(Item, L) ->
+    lists:member(Item, L).

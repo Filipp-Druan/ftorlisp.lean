@@ -40,15 +40,27 @@ def externTable : List (String × String) := [
   ("str_trim",     "stdlib:str_trim"),
   ("str_contains", "stdlib:str_contains"),
 
-  ("int_to_string",  "stdlib:number_to_string"),
-  ("string_to_int",  "stdlib:string_to_number"),
+  ("number_to_string",  "stdlib:number_to_string"),
+  ("string_to_number",  "stdlib:string_to_number"),
   ("bool_to_string", "stdlib:bool_to_string"),
 
   ("length",   "stdlib:ft_list_length"),
   ("is_empty", "stdlib:ft_list_is_empty"),
   ("reverse",  "stdlib:ft_list_reverse"),
   ("append",   "stdlib:ft_list_append"),
-  ("nth",      "stdlib:ft_list_nth")
+  ("nth",      "stdlib:ft_list_nth"),
+  ("str_eq", "stdlib:str_eq"),
+  ("read_line", "stdlib:read_line"),
+  ("str_split_once", "stdlib:str_split_once"),
+  ("str_list_take", "stdlib:str_list_take"),
+  ("str_list_remove", "stdlib:str_list_remove"),
+  ("str_list_contains", "stdlib:str_list_contains"),
+  ("str_eq", "stdlib:str_eq"),
+  ("read_line", "stdlib:read_line"),
+  ("str_split_once", "stdlib:str_split_once"),
+  ("str_list_take", "stdlib:stdlib:str_list_take"),
+  ("str_list_remove", "stdlib:str_list_remove"),
+  ("str_list_contains", "stdlib:str_list_contains")
 ]
 
 def lookupExtern (name : String) : Option String :=
@@ -144,7 +156,14 @@ def spaces (n : Nat) : String :=
 structure Env where
   topConsts : List String
   localFuns : List String
+  ctors : List String
 deriving Inhabited
+
+def collectConstructors (program : List TyAST) : List String :=
+  program.flatMap (fun item =>
+    match item with
+    | .stmt (.data_decl _ _ ctors) => ctors.map (fun (cname, _) => cname)
+    | _ => [])
 
 -- ==========================================================================
 -- Паттерны match
@@ -156,7 +175,7 @@ def patternToErlang (pat : TyASTPattern) : String :=
   | .cons _ name args =>
     let tag := mangleAtomName name
     if args.isEmpty then
-      tag
+      s!"\{{tag}}" -- Оборачиваем в кортеж даже пустые конструкторы
     else
       let argsStr := String.intercalate ", " (args.map (fun (n, _) => mangleVarName n))
       "{" ++ tag ++ ", " ++ argsStr ++ "}"
@@ -187,7 +206,9 @@ partial def exprToErlang (env : Env) (ast : TyASTExpr) (ind : Nat := 4) : String
   | .string _ val =>
     escapeErlangString val
   | .varRead _ name =>
-    if env.topConsts.contains name then
+    if env.ctors.contains name then
+      s!"\{{mangleAtomName name}}" -- Генерируем кортеж {cmd_quit}
+    else if env.topConsts.contains name then
       s!"{mangleAtomName name}()"
     else
       mangleVarName name
@@ -220,7 +241,14 @@ partial def exprToErlang (env : Env) (ast : TyASTExpr) (ind : Nat := 4) : String
       let argsStr := String.intercalate ", " (args.map (fun e => exprToErlang env e ind))
       match head with
       | .varRead _ name =>
-        if env.localFuns.contains name then
+        if env.ctors.contains name then
+          -- Это вызов конструктора типа!
+          let tag := mangleAtomName name
+          if args.isEmpty then
+            s!"\{{tag}}" -- Генерируем кортеж вместо голого атома
+          else
+            "{" ++ tag ++ ", " ++ argsStr ++ "}"
+        else if env.localFuns.contains name then
           s!"{mangleVarName name}({argsStr})"
         else match lookupExtern name with
           | some qualified => s!"{qualified}({argsStr})"
@@ -310,7 +338,8 @@ def collectDataDecls (program : List TyAST) : List (String × List (String × Li
 def compileModule (moduleName : String) (program : List TyAST) : String :=
   let topConsts := collectTopLevelConstNames program
   let topFuncs  := collectTopLevelFuncArities program
-  let env : Env := { topConsts := topConsts, localFuns := [] }
+  let ctors     := collectConstructors program
+  let env : Env := { topConsts := topConsts, localFuns := [], ctors := ctors }
 
   -- ---- заголовок и экспорт ----
   let constExports := topConsts.map (fun n => s!"{mangleAtomName n}/0")

@@ -26,3 +26,12 @@
 (dec number_to_string  [Number] String)
 (dec string_to_number  [String] Number)
 (dec bool_to_string [Bool] String)
+
+(dec read_line [] String)
+
+(dec str_eq [String String] Bool)
+(dec str_split_once [String String] (List String))
+
+(dec str_list_take [Number (List String)] (List String))
+(dec str_list_remove [String (List String)] (List String))
+(dec str_list_contains [String (List String)] Bool)
