@@ -60,10 +60,14 @@ mutual
   private partial def exprParser (parse_tree : ParseTree) : SPExcept UnTyASTExpr :=
     match parse_tree with
       | .number val => .ok $ .number val
+      | .string val => .ok $ .string val
       | .sym name => match name with
         | "true" => .ok $ .bool true
         | "false" => .ok $ .bool false
         | _ => .ok $ .sym name
+      | .list list => do
+        let res ← list.mapM exprParser
+        .ok $ .list $ res
       | .call (oper :: args) =>
         match oper with
           | .sym "+" => binOpParser .add args
