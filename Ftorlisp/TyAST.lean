@@ -69,6 +69,20 @@ namespace Ftorlisp.TyASTPrinter
 def spaces (n : Nat) : String :=
   String.ofList (List.replicate n ' ')
 
+-- Печать паттерна match-выражения.
+-- Не является взаимно рекурсивной функцией, поэтому вынесена из mutual блока.
+def patternToString (pat : TyASTPattern) : String :=
+  match pat with
+  | .wildcard ty =>
+    s!"_ : {Ty.tyToString ty}"
+  | .cons ty name args =>
+    if args.isEmpty then
+      s!"({name}) : {Ty.tyToString ty}"
+    else
+      let argsStr := String.intercalate " " (args.map (fun (n, t) => s!"({n} : {Ty.tyToString t})"))
+      s!"({name} {argsStr}) : {Ty.tyToString ty}"
+
+
 mutual
   -- Обработка выражений
   partial def exprToString (ast : TyASTExpr) (ind : Nat := 0) : String :=
@@ -116,7 +130,23 @@ mutual
       let argsStrs := list.map (fun e => exprToString e indNext)
       let body := String.intercalate s!"\n{spaces indNext}" argsStrs
       s!"({body}) : {Ty.tyToString ty}"
-    | .match_exp ty target patterns => "(match not implemented printing)"
+    | .match_exp ty target branches =>
+      -- Длина префикса: "(match " (7 символов) — под ним печатается target
+      let targetIndent := ind + 7
+      let targetStr := exprToString target targetIndent
+      -- Ветки печатаются с отступом ind + 2
+      let branchesIndent := ind + 2
+      -- Тело каждой ветки печатается с отступом branchesIndent + 2 (учитывая "[")
+      let bodyIndent := branchesIndent + 2
+      let branchStrs := branches.map (fun (pat, e) =>
+        let patStr := patternToString pat
+        let bodyStr := exprToString e bodyIndent
+        s!"[{patStr}\n{spaces bodyIndent}{bodyStr}]")
+      let branchesJoined := String.intercalate s!"\n{spaces branchesIndent}" branchStrs
+      if branches.isEmpty then
+        s!"(match {targetStr}) : {Ty.tyToString ty}"
+      else
+        s!"(match {targetStr}\n{spaces branchesIndent}{branchesJoined}) : {Ty.tyToString ty}"
     | .first ty list =>
       let indNext := ind + 7
       s!"(first {exprToString list indNext}) : {Ty.tyToString ty}"
