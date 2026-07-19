@@ -40,8 +40,8 @@ def externTable : List (String × String) := [
   ("str_trim",     "stdlib:str_trim"),
   ("str_contains", "stdlib:str_contains"),
 
-  ("int_to_string",  "stdlib:int_to_string"),
-  ("string_to_int",  "stdlib:string_to_int"),
+  ("int_to_string",  "stdlib:number_to_string"),
+  ("string_to_int",  "stdlib:string_to_number"),
   ("bool_to_string", "stdlib:bool_to_string"),
 
   ("length",   "stdlib:ft_list_length"),

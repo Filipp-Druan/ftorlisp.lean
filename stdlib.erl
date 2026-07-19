@@ -15,7 +15,7 @@
     str_split/2, str_contains/2,
 
     %% Конвертация
-    int_to_string/1, string_to_int/1, bool_to_string/1,
+    number_to_string/1, string_to_number/1, bool_to_string/1,
 
     %% Списки (нативно полиморфны в Erlang, но
     %% на стороне Ftorlisp это должны быть спецформы, см. ниже)
@@ -83,12 +83,12 @@ str_contains(Str, Sub) ->
 
 %% ==================== Конвертация ====================
 
-int_to_string(Num) ->
+number_to_string(Num) ->
     lists:flatten(io_lib:format("~p", [trunc(Num)])).
 
-string_to_int(Str) ->
+string_to_number(Str) ->
     try list_to_float(Str)
-    catch _:_ -> float(list_to_integer(Str))
+    catch _:_ -> float(list_to_float(Str))
     end.
 
 bool_to_string(true)  -> "true";

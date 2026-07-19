@@ -23,6 +23,6 @@
 (dec str_trim     [String] String)
 (dec str_contains [String String] Bool)
 
-(dec int_to_string  [Number] String)
-(dec string_to_int  [String] Number)
+(dec number_to_string  [Number] String)
+(dec string_to_number  [String] Number)
 (dec bool_to_string [Bool] String)
