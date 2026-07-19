@@ -5,4 +5,5 @@ inductive ParseTree where
   | sym (name : String)
   | string (val : String)
   | call (list : List ParseTree)
-deriving Nonempty, Repr, BEq
+  | list (list : List ParseTree)
+deriving Inhabited, Nonempty, Repr, BEq

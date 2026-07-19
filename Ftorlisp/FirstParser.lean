@@ -62,7 +62,7 @@ deriving Inhabited, BEq
 
 -- Ядро конечного автомата. Оно рекурсивно проходит по строке.
 -- it - итератор строки, acc - накопленный результат, consumed - количество пройденных символов.
-private partial def stringFSMCore (it : String.Iterator) (state : StringFSMState) (acc : String) (consumed : Nat) :
+private partial def stringFSMCore (it : String.Legacy.Iterator) (state : StringFSMState) (acc : String) (consumed : Nat) :
     Except FirstParserError (String × Nat) :=
   if it.atEnd then
     .error FirstParserError.str -- Ошибка: дошли до конца файла, а закрывающей кавычки нет
@@ -95,9 +95,9 @@ private def stringParser : Parser FirstParserError ParseTree :=
       .error { err := .custom FirstParserError.str, pos := state.pos, sub := .none }
     else
       -- Создаем итератор и сразу пропускаем первую открывающую кавычку
-      let startIt := inputStr.mkIterator.next
-      -- Запускаем автомат
-      match stringFSMCore startIt .normal "" 1 with
+      let startIt := String.Legacy.mkIterator inputStr
+           -- Запускаем автомат
+      match stringFSMCore (String.Legacy.Iterator.next startIt) .normal "" 1 with
       | .ok (parsedStr, consumed) =>
         let newPos := state.pos + consumed
         -- Отбрасываем прочитанное, как это делается в твоем комбинаторе sat
@@ -117,8 +117,10 @@ mutual
   -- Парсер для 'expr -> (quote expr)
   private partial def quoteParser : Parser FirstParserError ParseTree := do
     let _ ← char '\''
-    let list ← listParser -- Рекурсивно парсим следующее выражение
-    return .call [.sym "quote", list]
+    let quoted_list ← listParser -- Рекурсивно парсим следующее выражение
+    match quoted_list with
+      | .call val => return .list val
+      | _ => panic! "quote приняла не список"
 
   private partial def exprParser : Parser FirstParserError ParseTree := do
     (withErr (.custom .number)  numberParser) <|>
