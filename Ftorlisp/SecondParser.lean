@@ -65,9 +65,10 @@ mutual
         | "true" => .ok $ .bool true
         | "false" => .ok $ .bool false
         | _ => .ok $ .sym name
-      | .list list => do
+      | .list ty_expr list => do
+        let ty_ast ← tyParser ty_expr
         let res ← list.mapM exprParser
-        .ok $ .list $ res
+        .ok $ .list ty_ast res
       | .call (oper :: args) =>
         match oper with
           | .sym "+" => binOpParser .add args

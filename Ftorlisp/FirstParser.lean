@@ -117,9 +117,10 @@ mutual
   -- Парсер для 'expr -> (quote expr)
   private partial def quoteParser : Parser FirstParserError ParseTree := do
     let _ ← char '\''
+    let ty_expr ← exprParser
     let quoted_list ← listParser -- Рекурсивно парсим следующее выражение
     match quoted_list with
-      | .call val => return .list val
+      | .call val => return .list ty_expr val
       | _ => panic! "quote приняла не список"
 
   private partial def exprParser : Parser FirstParserError ParseTree := do
