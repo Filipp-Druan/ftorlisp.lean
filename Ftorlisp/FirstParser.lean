@@ -42,7 +42,7 @@ private def isMathChar (ch : Char) : Bool :=
   ch ∈ ['+', '-', '*', '/', '=']
 
 private def isSymbolChar (ch : Char) : Bool :=
-  ch.isAlphanum || isMathChar ch
+  ch.isAlphanum || isMathChar ch || ch ∈ ['_']
 
 private def symParser : Parser FirstParserError ParseTree := do
   let chars ← many1 (sat isSymbolChar)
