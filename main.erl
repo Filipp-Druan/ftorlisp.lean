@@ -12,4 +12,4 @@ fact(N) ->
 
 main() ->
     x(),
-    ftorlisp_stdlib:println_num(fact(x())).
+    stdlib:println_num(fact(x())).
